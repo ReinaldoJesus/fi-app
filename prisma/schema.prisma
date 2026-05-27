@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── NextAuth ────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  authAccounts AuthAccount[]
+  sessions     Session[]
+  finAccounts  FinAccount[]
+  transactions Transaction[]
+  categories   Category[]
+  budgets      Budget[]
+}
+
+model AuthAccount {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Finanzas ────────────────────────────────────────────────────────────────
+
+enum AccountType {
+  CHECKING    // Cuenta corriente
+  SAVINGS     // Cuenta de ahorro
+  CREDIT_CARD // Tarjeta de crédito
+  CASH        // Efectivo
+  INVESTMENT  // Inversiones
+}
+
+enum TransactionType {
+  INCOME   // Ingreso
+  EXPENSE  // Gasto
+  TRANSFER // Transferencia entre cuentas
+}
+
+model FinAccount {
+  id        String      @id @default(cuid())
+  name      String
+  type      AccountType
+  balance   Decimal     @default(0) @db.Decimal(14, 2)
+  currency  String      @default("CLP")
+  color     String      @default("#10b981")
+  icon      String?
+  userId    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[] @relation("FromAccount")
+  transferTargets Transaction[] @relation("ToAccount")
+
+  @@map("fin_accounts")
+}
+
+model Category {
+  id        String          @id @default(cuid())
+  name      String
+  type      TransactionType
+  color     String          @default("#6366f1")
+  icon      String?
+  isDefault Boolean         @default(false)
+  userId    String
+  createdAt DateTime        @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Decimal         @db.Decimal(14, 2)
+  type        TransactionType
+  description String?
+  notes       String?         @db.Text
+  date        DateTime
+  userId      String
+  accountId   String
+  toAccountId String?
+  categoryId  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account   FinAccount  @relation("FromAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccount FinAccount? @relation("ToAccount", fields: [toAccountId], references: [id])
+  category  Category?   @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  amount     Decimal  @db.Decimal(14, 2)
+  month      Int
+  year       Int
+  userId     String
+  categoryId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month, year])
+  @@map("budgets")
+}
