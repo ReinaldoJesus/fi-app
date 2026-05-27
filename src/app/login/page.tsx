@@ -71,6 +71,13 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <Link
+            href="/signup"
+            className="mt-3 w-full flex items-center justify-center py-2.5 px-4 bg-transparent hover:bg-gray-800 border border-gray-700 text-gray-300 hover:text-white font-semibold rounded-xl transition text-sm"
+          >
+            Crear cuenta
+          </Link>
+
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -112,11 +119,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-gray-500 text-sm mt-6">
-          ¿No tienes cuenta?{" "}
-          <Link href="/signup" className="text-emerald-400 hover:text-emerald-300 transition font-medium">
-            Regístrate gratis
-          </Link>
+        <p className="text-center text-gray-600 text-xs mt-6">
+          © 2026 fi-app · Tus finanzas bajo control
         </p>
       </div>
     </div>
