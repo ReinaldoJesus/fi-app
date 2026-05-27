@@ -6,7 +6,7 @@ export async function getDashboardData(userId: string) {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
 
-  const [accounts, todayTransactions, recentTransactions] = await Promise.all([
+  const [accounts, todayTransactions, recentTransactions, categories] = await Promise.all([
     prisma.finAccount.findMany({
       where: { userId },
       select: { id: true, name: true, type: true, balance: true, currency: true, color: true },
@@ -29,6 +29,11 @@ export async function getDashboardData(userId: string) {
         account: { select: { name: true } },
       },
     }),
+    prisma.category.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, icon: true },
+      orderBy: { name: "asc" },
+    }),
   ])
 
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance), 0)
@@ -48,5 +53,6 @@ export async function getDashboardData(userId: string) {
     netToday: incomeToday - expensesToday,
     accounts,
     recentTransactions,
+    categories,
   }
 }

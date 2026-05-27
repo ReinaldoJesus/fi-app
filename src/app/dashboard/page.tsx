@@ -2,6 +2,8 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { logout } from "@/app/actions/auth"
 import { getDashboardData } from "@/app/lib/dashboard"
+import NewAccountButton from "./components/NewAccountButton"
+import NewTransactionButton from "./components/NewTransactionButton"
 
 function formatCLP(amount: number) {
   return new Intl.NumberFormat("es-CL", {
@@ -33,7 +35,7 @@ export default async function DashboardPage() {
   if (!session?.user) redirect("/login")
 
   const userId = session.user.id as string
-  const { totalBalance, incomeToday, expensesToday, netToday, accounts, recentTransactions } =
+  const { totalBalance, incomeToday, expensesToday, netToday, accounts, recentTransactions, categories } =
     await getDashboardData(userId)
 
   const firstName = session.user.name?.split(" ")[0] ?? "Usuario"
@@ -117,7 +119,10 @@ export default async function DashboardPage() {
 
           {/* Accounts */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
-            <h2 className="font-semibold text-white mb-4">Mis cuentas</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-white">Mis cuentas</h2>
+              <NewAccountButton />
+            </div>
             {accounts.length === 0 ? (
               <EmptyState
                 icon="🏦"
@@ -146,9 +151,7 @@ export default async function DashboardPage() {
           <div className="lg:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-white">Últimas transacciones</h2>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-lg transition">
-                <span>+</span> Agregar
-              </button>
+              <NewTransactionButton accounts={accounts} categories={categories} />
             </div>
             {recentTransactions.length === 0 ? (
               <EmptyState
