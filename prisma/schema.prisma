@@ -19,7 +19,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  authAccounts AuthAccount[]
+  accounts     Account[]
   sessions     Session[]
   finAccounts  FinAccount[]
   transactions Transaction[]
@@ -27,7 +27,7 @@ model User {
   budgets      Budget[]
 }
 
-model AuthAccount {
+model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
