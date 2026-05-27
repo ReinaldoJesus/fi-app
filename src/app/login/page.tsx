@@ -1,5 +1,6 @@
 "use client"
 import { useActionState } from "react"
+import Link from "next/link"
 import { loginWithCredentials, loginWithGoogle, loginWithGitHub } from "@/app/actions/auth"
 
 export default function LoginPage() {
@@ -111,8 +112,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-6">
-          © 2026 fi-app · Tus finanzas bajo control
+        <p className="text-center text-gray-500 text-sm mt-6">
+          ¿No tienes cuenta?{" "}
+          <Link href="/signup" className="text-emerald-400 hover:text-emerald-300 transition font-medium">
+            Regístrate gratis
+          </Link>
         </p>
       </div>
     </div>
