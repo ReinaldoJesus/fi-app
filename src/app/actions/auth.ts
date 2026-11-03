@@ -68,3 +68,39 @@ export async function loginWithGitHub() {
 export async function logout() {
   await signOut({ redirectTo: "/login" })
 }
+
+export async function updateProfile(
+  _prev: { error?: string; success?: string } | undefined,
+  formData: FormData
+): Promise<{ error?: string; success?: string }> {
+  const { auth } = await import("@/auth")
+  const { revalidatePath } = await import("next/cache")
+  const session = await auth()
+  if (!session?.user?.id) return { error: "No autorizado" }
+
+  const userId = session.user.id
+  const name = (formData.get("name") as string)?.trim()
+  const currentPassword = formData.get("currentPassword") as string
+  const newPassword = formData.get("newPassword") as string
+
+  if (name) {
+    await prisma.user.update({ where: { id: userId }, data: { name } })
+  }
+
+  if (newPassword) {
+    if (!currentPassword) return { error: "Ingresa tu contraseña actual" }
+    if (newPassword.length < 8) return { error: "La nueva contraseña debe tener mínimo 8 caracteres" }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.password) return { error: "Esta cuenta usa login social, no puedes cambiar contraseña" }
+
+    const valid = await bcrypt.compare(currentPassword, user.password)
+    if (!valid) return { error: "Contraseña actual incorrecta" }
+
+    const hashed = await bcrypt.hash(newPassword, 12)
+    await prisma.user.update({ where: { id: userId }, data: { password: hashed } })
+  }
+
+  revalidatePath("/dashboard/profile")
+  return { success: "Cambios guardados correctamente" }
+}

@@ -16,15 +16,24 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
-  createdAt     DateTime  @default(now())
+  theme              String   @default("system")
+  budgetCarryOver    Boolean  @default(false)
+  notifSubscriptions Boolean  @default(true)
+  notifInactivity    Boolean  @default(true)
+  hideAmountsOnStart Boolean  @default(false)
+  defaultAccountId   String?
+  createdAt          DateTime @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts     Account[]
-  sessions     Session[]
-  finAccounts  FinAccount[]
-  transactions Transaction[]
-  categories   Category[]
-  budgets      Budget[]
+  accounts               Account[]
+  sessions               Session[]
+  finAccounts            FinAccount[]
+  transactions           Transaction[]
+  categories             Category[]
+  budgets                Budget[]
+  subscriptions          Subscription[]
+  savingsGoals           SavingsGoal[]
+  recurringTransactions  RecurringTransaction[]
 }
 
 model Account {
@@ -81,20 +90,23 @@ enum TransactionType {
 }
 
 model FinAccount {
-  id        String      @id @default(cuid())
-  name      String
-  type      AccountType
-  balance   Decimal     @default(0) @db.Decimal(14, 2)
-  currency  String      @default("CLP")
-  color     String      @default("#10b981")
-  icon      String?
-  userId    String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id          String      @id @default(cuid())
+  name        String
+  type        AccountType
+  balance     Decimal     @default(0) @db.Decimal(14, 2)
+  creditLimit Decimal?    @db.Decimal(14, 2)
+  currency    String      @default("CLP")
+  color       String      @default("#10b981")
+  icon        String?
+  bank        String?
+  userId      String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions    Transaction[] @relation("FromAccount")
-  transferTargets Transaction[] @relation("ToAccount")
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]          @relation("FromAccount")
+  transferTargets       Transaction[]          @relation("ToAccount")
+  recurringTransactions RecurringTransaction[]
 
   @@map("fin_accounts")
 }
@@ -109,9 +121,10 @@ model Category {
   userId    String
   createdAt DateTime        @default(now())
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  budgets      Budget[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
 
   @@map("categories")
 }
@@ -140,6 +153,42 @@ model Transaction {
   @@map("transactions")
 }
 
+model Subscription {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  amount     Decimal  @db.Decimal(14, 2)
+  currency   String   @default("CLP")
+  billingDay Int?
+  category   String?
+  icon       String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  icon          String?
+  color         String    @default("#34c759")
+  targetAmount  Decimal   @db.Decimal(14, 2)
+  currentAmount Decimal   @db.Decimal(14, 2) @default(0)
+  deadline      DateTime?
+  completed     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("savings_goals")
+}
+
 model Budget {
   id         String   @id @default(cuid())
   amount     Decimal  @db.Decimal(14, 2)
@@ -155,4 +204,26 @@ model Budget {
 
   @@unique([userId, categoryId, month, year])
   @@map("budgets")
+}
+
+model RecurringTransaction {
+  id          String          @id @default(cuid())
+  userId      String
+  accountId   String
+  categoryId  String?
+  type        TransactionType
+  amount      Decimal         @db.Decimal(14, 2)
+  description String?
+  dayOfMonth  Int
+  active      Boolean         @default(true)
+  lastGeneratedMonth Int?
+  lastGeneratedYear  Int?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  FinAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category Category?  @relation(fields: [categoryId], references: [id])
+
+  @@map("recurring_transactions")
 }

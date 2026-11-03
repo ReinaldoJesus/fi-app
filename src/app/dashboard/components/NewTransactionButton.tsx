@@ -2,153 +2,125 @@
 import { useRef, useActionState, useState } from "react"
 import { createTransaction } from "@/app/actions/finance"
 
-type Account = { id: string; name: string }
+type Account = { id: string; name: string; type?: string }
 type Category = { id: string; name: string; type: string; icon: string | null }
 
+const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px]"
+const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1.5"
+const fmt = (n: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n)
+
 export default function NewTransactionButton({
-  accounts,
-  categories,
+  accounts, categories, defaultAccountId, budgetStatus,
 }: {
   accounts: Account[]
   categories: Category[]
+  defaultAccountId?: string | null
+  budgetStatus?: Record<string, { budget: number; spent: number }>
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE")
+  const [selectedCategoryId, setSelectedCategoryId] = useState("")
+  const today = new Date().toISOString().split("T")[0]
+
+  const budgetInfo = type === "EXPENSE" && selectedCategoryId && budgetStatus?.[selectedCategoryId]
+    ? budgetStatus[selectedCategoryId]
+    : null
+
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
     const result = await createTransaction(formData)
     if (!result?.error) dialogRef.current?.close()
     return result
   }, undefined)
 
-  const filteredCategories = categories.filter((c) => c.type === type)
-  const today = new Date().toISOString().split("T")[0]
-
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-lg transition"
-      >
-        + Agregar
+      <button onClick={() => dialogRef.current?.showModal()}
+        className="flex items-center gap-1.5 px-4 py-2 bg-[#1d1d1f] dark:bg-white hover:opacity-90 text-white dark:text-[#1d1d1f] text-[13px] font-semibold rounded-xl transition-all">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Nueva
       </button>
 
-      <dialog
-        ref={dialogRef}
-        className="bg-gray-900 rounded-2xl border border-gray-800 p-6 w-full max-w-sm shadow-2xl backdrop:bg-black/60 open:flex open:flex-col"
-        onClick={(e) => { if (e.target === e.currentTarget) dialogRef.current?.close() }}
-      >
-        <h3 className="text-white font-semibold text-lg mb-5">Nueva transacción</h3>
+      <dialog ref={dialogRef}
+        className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-black/[0.08] dark:border-white/[0.08] backdrop:bg-black/40 open:flex open:flex-col m-auto"
+        onClick={(e) => { if (e.target === e.currentTarget) dialogRef.current?.close() }}>
 
-        {state?.error && (
-          <p className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{state.error}</p>
-        )}
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">Nueva transacción</h3>
+          <button type="button" onClick={() => dialogRef.current?.close()} className="text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {state?.error && <p className="mb-4 text-[13px] text-[#ff3b30] bg-[#ff3b30]/10 border border-[#ff3b30]/20 px-3 py-2 rounded-xl">{state.error}</p>}
 
         {accounts.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">Primero crea una cuenta para registrar transacciones.</p>
+          <p className="text-sm text-[#86868b] text-center py-6">Primero crea una cuenta en la sección Cuentas.</p>
         ) : (
           <form action={action} className="space-y-4">
-            {/* Tipo */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-[#f5f5f7] dark:bg-white/[0.06] rounded-xl">
               {(["EXPENSE", "INCOME"] as const).map((t) => (
                 <label key={t} className="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="type"
-                    value={t}
-                    checked={type === t}
-                    onChange={() => setType(t)}
-                    className="sr-only peer"
-                  />
-                  <span className={`block text-center py-2 rounded-xl border text-sm font-semibold transition peer-checked:border-transparent
-                    ${t === "EXPENSE"
-                      ? "border-gray-700 text-gray-400 peer-checked:bg-red-500/20 peer-checked:text-red-400"
-                      : "border-gray-700 text-gray-400 peer-checked:bg-emerald-500/20 peer-checked:text-emerald-400"
-                    }`}>
-                    {t === "EXPENSE" ? "📉 Gasto" : "📈 Ingreso"}
-                  </span>
+                  <input type="radio" name="type" value={t} checked={type === t} onChange={() => setType(t)} className="sr-only" />
+                  <span className={`block text-center py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                    type === t ? "bg-white dark:bg-white/[0.12] text-[#1d1d1f] dark:text-white shadow-sm" : "text-[#86868b]"
+                  }`}>{t === "EXPENSE" ? "Gasto" : "Ingreso"}</span>
                 </label>
               ))}
             </div>
 
-            {/* Monto */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Monto (CLP)</label>
-              <input
-                name="amount"
-                type="number"
-                min="1"
-                step="1"
-                required
-                placeholder="0"
-                className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-              />
-            </div>
+            <div><label className={labelCls}>Monto (CLP)</label>
+              <input name="amount" type="number" min="1" step="1" required placeholder="0" className={inputCls} /></div>
 
-            {/* Descripción */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Descripción</label>
-              <input
-                name="description"
-                placeholder="Ej: Supermercado Lider"
-                className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-              />
-            </div>
+            <div><label className={labelCls}>Descripción</label>
+              <input name="description" placeholder="Ej: Supermercado" className={inputCls} /></div>
 
-            {/* Fecha */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Fecha</label>
-              <input
-                name="date"
-                type="date"
-                defaultValue={today}
-                required
-                className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-              />
-            </div>
+            <div><label className={labelCls}>Notas (opcional)</label>
+              <textarea name="notes" placeholder="Detalles adicionales..." rows={2}
+                className={inputCls + " resize-none"} /></div>
 
-            {/* Cuenta */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Cuenta</label>
-              <select
-                name="accountId"
-                required
-                className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-              >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            </div>
+            <div><label className={labelCls}>Fecha</label>
+              <input name="date" type="date" defaultValue={today} required className={inputCls} /></div>
 
-            {/* Categoría */}
-            {filteredCategories.length > 0 && (
+            <div><label className={labelCls}>Cuenta</label>
+              <select name="accountId" required defaultValue={defaultAccountId ?? undefined} className={inputCls}>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select></div>
+
+            {categories.filter((c) => c.type === type).length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Categoría</label>
-                <select
-                  name="categoryId"
-                  className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                >
+                <label className={labelCls}>Categoría</label>
+                <select name="categoryId" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className={inputCls}>
                   <option value="">Sin categoría</option>
-                  {filteredCategories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                  ))}
+                  {categories.filter((c) => c.type === type).map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                 </select>
+                {budgetInfo && (() => {
+                  const remaining = budgetInfo.budget - budgetInfo.spent
+                  const pct = Math.round((budgetInfo.spent / budgetInfo.budget) * 100)
+                  const over = remaining < 0
+                  const color = over ? "#ff3b30" : pct >= 80 ? "#ff9500" : "#34c759"
+                  return (
+                    <div className="mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium" style={{ backgroundColor: `${color}15`, color }}>
+                      {over
+                        ? <span>⚠️ Superado por {fmt(Math.abs(remaining))} · {pct}% usado</span>
+                        : <span>Quedan {fmt(remaining)} de {fmt(budgetInfo.budget)} · {pct}% usado</span>
+                      }
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => dialogRef.current?.close()}
-                className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:text-white text-sm transition"
-              >
+            <div className="flex gap-2.5 pt-1">
+              <button type="button" onClick={() => dialogRef.current?.close()}
+                className="flex-1 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white text-[13px] font-semibold hover:opacity-80 transition-opacity">
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-semibold text-sm transition"
-              >
+              <button type="submit" disabled={pending}
+                className="flex-1 py-2.5 rounded-xl bg-[#1d1d1f] dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-[#1d1d1f] font-semibold text-[13px] transition-all">
                 {pending ? "Guardando..." : "Guardar"}
               </button>
             </div>
@@ -158,4 +130,3 @@ export default function NewTransactionButton({
     </>
   )
 }
-

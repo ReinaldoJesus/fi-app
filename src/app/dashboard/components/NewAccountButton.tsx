@@ -1,113 +1,131 @@
 "use client"
-import { useRef, useActionState } from "react"
+import { useRef, useActionState, useState } from "react"
+import { useRouter } from "next/navigation"
 import { createAccount } from "@/app/actions/finance"
+import { CURRENCIES } from "@/lib/fmt"
 
 const ACCOUNT_TYPES = [
-  { value: "CHECKING", label: "Cuenta corriente" },
-  { value: "SAVINGS", label: "Cuenta de ahorro" },
-  { value: "CREDIT_CARD", label: "Tarjeta de crédito" },
-  { value: "CASH", label: "Efectivo" },
+  { value: "CHECKING", label: "Cuenta corriente" }, { value: "SAVINGS", label: "Cuenta de ahorro" },
+  { value: "CREDIT_CARD", label: "Tarjeta de crédito" }, { value: "CASH", label: "Efectivo" },
   { value: "INVESTMENT", label: "Inversiones" },
 ]
+const COLORS = ["#34c759", "#007aff", "#bf5af2", "#ff3b30", "#e63946", "#ff9500"]
+const BANKS = ["Santander", "BCI", "Banco de Chile", "Scotiabank", "BICE", "Itaú"]
 
-const COLORS = [
-  "#10b981", "#3b82f6", "#8b5cf6",
-  "#ec4899", "#f97316", "#eab308",
-]
+const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px]"
+const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1.5"
 
 export default function NewAccountButton() {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const router = useRouter()
+  const [accountType, setAccountType] = useState("CHECKING")
+  const [currency, setCurrency] = useState("CLP")
+  const [bankInput, setBankInput] = useState("")
+  const [showSugg, setShowSugg] = useState(false)
+
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
     const result = await createAccount(formData)
-    if (!result?.error) dialogRef.current?.close()
+    if (!result?.error) {
+      dialogRef.current?.close()
+      setAccountType("CHECKING")
+      setCurrency("CLP")
+      setBankInput("")
+      router.refresh()
+    }
     return result
   }, undefined)
 
+  const suggestions = BANKS.filter((b) => b.toLowerCase().includes(bankInput.toLowerCase()) && bankInput.length > 0)
+
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 hover:text-white text-xs font-semibold rounded-lg transition"
-      >
-        + Nueva cuenta
+      <button onClick={() => dialogRef.current?.showModal()}
+        className="flex items-center gap-1.5 px-4 py-2 bg-[#1d1d1f] dark:bg-white hover:opacity-90 text-white dark:text-[#1d1d1f] text-[13px] font-semibold rounded-xl transition-all">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Nueva cuenta
       </button>
 
-      <dialog
-        ref={dialogRef}
-        className="bg-gray-900 rounded-2xl border border-gray-800 p-6 w-full max-w-sm shadow-2xl backdrop:bg-black/60 open:flex open:flex-col"
-        onClick={(e) => { if (e.target === e.currentTarget) dialogRef.current?.close() }}
-      >
-        <h3 className="text-white font-semibold text-lg mb-5">Nueva cuenta</h3>
+      <dialog ref={dialogRef}
+        className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-black/[0.08] dark:border-white/[0.08] backdrop:bg-black/40 open:flex open:flex-col m-auto"
+        onClick={(e) => { if (e.target === e.currentTarget) dialogRef.current?.close() }}>
 
-        {state?.error && (
-          <p className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">{state.error}</p>
-        )}
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">Nueva cuenta</h3>
+          <button type="button" onClick={() => dialogRef.current?.close()} className="text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {state?.error && <p className="mb-4 text-[13px] text-[#ff3b30] bg-[#ff3b30]/10 border border-[#ff3b30]/20 px-3 py-2 rounded-xl">{state.error}</p>}
 
         <form action={action} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Nombre</label>
-            <input
-              name="name"
-              required
-              placeholder="Ej: Banco Santander"
-              className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            />
+          <div className="relative">
+            <label className={labelCls}>Banco</label>
+            <input name="bank" value={bankInput}
+              onChange={(e) => { setBankInput(e.target.value); setShowSugg(true) }}
+              onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+              onFocus={() => setShowSugg(true)}
+              placeholder="Ej: Santander, BCI..." className={inputCls} />
+            {showSugg && suggestions.length > 0 && (
+              <ul className="absolute z-10 w-full mt-1 bg-white dark:bg-[#2c2c2e] border border-black/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden shadow-lg">
+                {suggestions.map((b) => (
+                  <li key={b} className="px-3.5 py-2.5 text-[13px] text-[#1d1d1f] dark:text-white hover:bg-[#f5f5f7] dark:hover:bg-white/[0.06] cursor-pointer"
+                    onMouseDown={() => { setBankInput(b); setShowSugg(false) }}>{b}</li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Tipo</label>
-            <select
-              name="type"
-              required
-              className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            >
-              {ACCOUNT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
+          <div><label className={labelCls}>Nombre</label>
+            <input name="name" required placeholder="Ej: Cuenta Corriente" className={inputCls} /></div>
+
+          <div><label className={labelCls}>Tipo</label>
+            <select name="type" value={accountType} onChange={(e) => setAccountType(e.target.value)} className={inputCls}>
+              {ACCOUNT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select></div>
+
+          <div><label className={labelCls}>Moneda</label>
+            <select name="currency" value={currency} onChange={e => setCurrency(e.target.value)} className={inputCls}>
+              {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Saldo inicial (CLP)</label>
-            <input
-              name="balance"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue="0"
-              placeholder="0"
-              className="w-full px-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            />
-          </div>
+          {accountType === "CREDIT_CARD" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className={labelCls}>Utilizado ({currency})</label>
+                <input name="usedAmount" type="number" min="0" step="any" defaultValue="0" className={`${inputCls} tabular-nums`} /></div>
+              <div><label className={labelCls}>Límite ({currency})</label>
+                <input name="creditLimit" type="number" min="0" step="any" defaultValue="0" className={`${inputCls} tabular-nums`} /></div>
+            </div>
+          ) : (
+            <div><label className={labelCls}>Saldo actual ({currency})</label>
+              <input name="balance" type="number" step="any" defaultValue="0" className={`${inputCls} tabular-nums`} /></div>
+          )}
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-2">Color</label>
+            <label className={labelCls}>Color</label>
             <div className="flex gap-2">
               {COLORS.map((c, i) => (
                 <label key={c} className="cursor-pointer">
                   <input type="radio" name="color" value={c} defaultChecked={i === 0} className="sr-only peer" />
-                  <span
-                    className="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-white peer-checked:ring-offset-2 peer-checked:ring-offset-gray-900 transition"
-                    style={{ backgroundColor: c }}
-                  />
+                  <span className="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-[#1d1d1f] dark:peer-checked:ring-white peer-checked:ring-offset-2 peer-checked:ring-offset-white dark:peer-checked:ring-offset-[#1c1c1e] transition-all"
+                    style={{ backgroundColor: c }} />
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => dialogRef.current?.close()}
-              className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:text-white text-sm transition"
-            >
+          <div className="flex gap-2.5 pt-1">
+            <button type="button" onClick={() => dialogRef.current?.close()}
+              className="flex-1 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white text-[13px] font-semibold hover:opacity-80 transition-opacity">
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={pending}
-              className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-semibold text-sm transition"
-            >
+            <button type="submit" disabled={pending}
+              className="flex-1 py-2.5 rounded-xl bg-[#1d1d1f] dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-[#1d1d1f] font-semibold text-[13px] transition-all">
               {pending ? "Guardando..." : "Guardar"}
             </button>
           </div>
