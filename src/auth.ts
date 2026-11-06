@@ -35,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Google verifies email ownership, so a Google sign-in may attach to an
     // existing Clarifi account with the same email instead of failing with
     // OAuthAccountNotLinked.
-    Google({ allowDangerousEmailAccountNotLinking: true }),
+    Google({ allowDangerousEmailAccountLinking: true }),
     GitHub,
   ],
   session: { strategy: "jwt" },
