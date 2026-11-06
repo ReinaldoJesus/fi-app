@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useRef, useState } from "react"
 import { logout } from "@/app/actions/auth"
+import SubmitOverlay from "@/components/SubmitOverlay"
 import { api } from "@/lib/api/client"
 import { useBalanceVisibility } from "@/contexts/BalanceVisibility"
 import BrandMark from "@/components/BrandMark"
@@ -166,8 +167,8 @@ function MobileMenu({ open, onClose, urgentSubsCount }: { open: boolean; onClose
 
   return (
     <div className="lg:hidden fixed inset-0 z-[400]">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute left-0 top-0 bottom-0 w-[82%] max-w-xs bg-[#1d1d1f] dark:bg-[#111111] text-white flex flex-col shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <div className="absolute inset-0 bg-black/50 anim-fade-in" onClick={onClose} />
+      <div className="absolute left-0 top-0 bottom-0 w-[82%] max-w-xs bg-[#1d1d1f] dark:bg-[#111111] text-white flex flex-col shadow-2xl anim-drawer-in pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         <div className="px-5 h-16 flex items-center justify-between border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
             <BrandMark size={32} inverted />
@@ -218,6 +219,7 @@ function MobileMenu({ open, onClose, urgentSubsCount }: { open: boolean; onClose
             ))}
           </div>
           <form action={logout}>
+            <SubmitOverlay label="Cerrando sesión…" />
             <button className="w-full py-2.5 rounded-xl bg-white/[0.06] text-[13px] font-semibold text-white/80">Cerrar sesión</button>
           </form>
         </div>

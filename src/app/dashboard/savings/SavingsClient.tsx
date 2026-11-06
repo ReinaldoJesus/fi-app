@@ -111,8 +111,8 @@ function ContributeDialog({ goal, onClose }: { goal: Goal; onClose: () => void }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-xs shadow-2xl border border-black/[0.08] dark:border-white/[0.08]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 anim-fade-in">
+      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-xs shadow-2xl border border-black/[0.08] dark:border-white/[0.08] anim-pop-in">
         <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white mb-1">Abonar a meta</h3>
         <p className="text-[13px] text-[#86868b] mb-4">{goal.name} · {fmt(goal.currentAmount)} de {fmt(goal.targetAmount)}</p>
         <input

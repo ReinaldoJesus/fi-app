@@ -3,6 +3,7 @@ import { useActionState } from "react"
 import Link from "next/link"
 import AuthShell from "@/components/AuthShell"
 import { signup } from "@/app/actions/auth"
+import { LoadingScreen } from "@/components/BrandLoader"
 
 const inputCls = "w-full px-4 py-3 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px] transition-all"
 
@@ -20,6 +21,7 @@ export default function SignupPage() {
         </p>
       }
     >
+          {pending && <LoadingScreen overlay label="Creando tu cuenta…" />}
 
           {state?.message && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-[#ff3b30]/08 border border-[#ff3b30]/20 text-[#ff3b30] text-[13px]">
