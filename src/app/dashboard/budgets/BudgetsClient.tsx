@@ -70,14 +70,14 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
       {/* Summary */}
       {totalBudget > 0 && (
         <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div>
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide">Gastado este mes</p>
-              <p className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white mt-1">{fmt(totalSpent)}</p>
+              <p className="text-[22px] sm:text-[28px] font-semibold text-[#1d1d1f] dark:text-white mt-1 tabular-nums truncate">{fmt(totalSpent)}</p>
             </div>
-            <div className="text-right">
+            <div className="text-right min-w-0">
               <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide">Presupuesto total</p>
-              <p className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white mt-1">{fmt(totalBudget)}</p>
+              <p className="text-[22px] sm:text-[28px] font-semibold text-[#1d1d1f] dark:text-white mt-1 tabular-nums truncate">{fmt(totalBudget)}</p>
             </div>
           </div>
           <div className="h-2 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">

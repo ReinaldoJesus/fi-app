@@ -78,12 +78,12 @@ export default function AnalyticsClient({
         .print-break { page-break-before: always; }
       }`}</style>
 
-      <div className="flex items-center justify-between mb-6 no-print">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 no-print">
         <div>
           <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Análisis</h1>
           <p className="text-[14px] text-[#86868b] mt-0.5">Últimos {period} meses</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Period selector */}
           <div className="flex gap-1 p-1 bg-white dark:bg-[#1c1c1e] border border-black/[0.09] dark:border-white/[0.07] rounded-xl shadow-sm">
             {[3, 6, 12].map(p => (
