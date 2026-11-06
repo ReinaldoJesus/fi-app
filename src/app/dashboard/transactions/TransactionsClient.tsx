@@ -343,7 +343,9 @@ export default function TransactionsClient({
                 className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
                   filterType === t ? "bg-white dark:bg-white/[0.12] text-[#1d1d1f] dark:text-white shadow-sm" : "text-[#86868b]"
                 }`}>
-                {t === "ALL" ? "Todos" : t === "INCOME" ? "↑" : "↓"}
+                {t === "ALL" ? "Todos" : t === "INCOME"
+                  ? <><span className={filterType === t ? "text-[#34c759]" : ""}>↑</span> Ingresos</>
+                  : <><span className={filterType === t ? "text-[#ff3b30]" : ""}>↓</span> Gastos</>}
               </button>
             ))}
           </div>
@@ -380,10 +382,27 @@ export default function TransactionsClient({
               <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
                 {txs.map(t => (
                   <div key={t.id} className={`flex items-center gap-3.5 px-4 py-3.5 transition-opacity ${deletingId === t.id ? "opacity-40" : ""}`}>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[15px] flex-shrink-0"
-                      style={{ backgroundColor: t.category?.color ? `${t.category.color}18` : "#f5f5f7" }}>
-                      {t.category?.icon ?? (t.type === "INCOME" ? "↑" : t.type === "TRANSFER" ? "⇄" : "↓")}
-                    </div>
+                    {t.category?.icon ? (
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[15px] flex-shrink-0"
+                        style={{ backgroundColor: t.category.color ? `${t.category.color}18` : undefined }}>
+                        {t.category.icon}
+                      </div>
+                    ) : (
+                      // No category icon: tint by movement type so it reads in light and dark mode.
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        t.type === "TRANSFER" ? "bg-[#007aff]/[0.12] text-[#007aff]"
+                          : t.type === "INCOME" ? "bg-[#34c759]/[0.12] text-[#34c759]"
+                          : "bg-[#ff3b30]/[0.1] text-[#ff3b30]"
+                      }`}>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden>
+                          {t.type === "TRANSFER"
+                            ? <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h12m0 0l-3.5-3.5M19 7l-3.5 3.5M17 17H5m0 0l3.5 3.5M5 17l3.5-3.5" />
+                            : t.type === "INCOME"
+                              ? <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6" />
+                              : <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m0 0l-6-6m6 6l6-6" />}
+                        </svg>
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white truncate">
                         {t.description ?? t.category?.name ?? "Sin descripción"}
