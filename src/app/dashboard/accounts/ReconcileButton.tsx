@@ -1,7 +1,7 @@
 "use client"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { reconcileAccount } from "@/app/actions/finance"
+import { api } from "@/lib/api/client"
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n)
@@ -24,9 +24,9 @@ export default function ReconcileButton({ accountId, currentBalance }: {
   function submit() {
     if (real === null || isNaN(real)) return
     startTransition(async () => {
-      const r = await reconcileAccount(accountId, real)
-      setResult(r ?? null)
-      if (r?.success) {
+      const r = await api.accounts.reconcile(accountId, real)
+      setResult(r.ok ? { success: true, delta: r.data.delta } : { error: r.error })
+      if (r.ok) {
         setTimeout(() => { close(); router.refresh() }, 1600)
       }
     })

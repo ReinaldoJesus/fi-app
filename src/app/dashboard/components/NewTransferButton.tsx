@@ -1,7 +1,7 @@
 "use client"
 import { useRef, useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createTransfer } from "@/app/actions/finance"
+import { api } from "@/lib/api/client"
 import { QuickActionContent, quickActionCls } from "@/components/QuickAction"
 
 type Account = { id: string; name: string; type: string; balance: number }
@@ -18,7 +18,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 export default function NewTransferButton({ accounts, variant = "button" }: { accounts: Account[]; variant?: "button" | "tile" }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date().toLocaleDateString("en-CA")
   const [fromId, setFromId] = useState(accounts[0]?.id ?? "")
   const [toId, setToId] = useState(accounts.length > 1 ? accounts[1].id : accounts[0]?.id ?? "")
   const [amountStr, setAmountStr] = useState("")
@@ -29,8 +29,8 @@ export default function NewTransferButton({ accounts, variant = "button" }: { ac
   const insufficientFunds = fromAccount && amount > 0 && amount > Number(fromAccount.balance)
 
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
-    const r = await createTransfer(formData)
-    if (!r?.error) {
+    const r = await api.transfers.create(formData)
+    if (!r.error) {
       dialogRef.current?.close()
       router.refresh()
       return undefined

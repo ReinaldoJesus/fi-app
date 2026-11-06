@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import Link from "next/link"
-import { getAccountsData } from "@/app/lib/dashboard"
+import { listAccounts } from "@/server/services/accounts"
 import NewAccountButton from "../components/NewAccountButton"
 import NewTransferButton from "../components/NewTransferButton"
 import AccountDeleteButton from "./AccountDeleteButton"
@@ -10,7 +10,7 @@ import ProductIcon from "@/components/ProductIcon"
 import { fmtCurrency } from "@/lib/fmt"
 import { card, eyebrow, sectionTitle, ACCOUNT_TYPE_LABEL } from "@/lib/ui"
 
-type Acc = Awaited<ReturnType<typeof getAccountsData>>[number]
+type Acc = Awaited<ReturnType<typeof listAccounts>>[number]
 
 function CreditCardVisual({ c }: { c: Acc }) {
   const cur = c.currency ?? "CLP"
@@ -53,7 +53,7 @@ function CreditCardVisual({ c }: { c: Acc }) {
 
 export default async function AccountsPage() {
   const session = await auth()
-  const accounts = await getAccountsData(session!.user!.id as string)
+  const accounts = await listAccounts(session!.user!.id as string)
 
   const regularAll = accounts.filter(a => a.type !== "CREDIT_CARD")
   const cards = accounts.filter(a => a.type === "CREDIT_CARD")

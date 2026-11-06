@@ -1,14 +1,14 @@
 import { auth } from "@/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getAccountTransactionsData } from "@/app/lib/dashboard"
+import { getAccountStatement } from "@/server/services/accounts"
 import PrivateAmount from "@/components/PrivateAmount"
 import { fmtCurrency } from "@/lib/fmt"
 import ProductIcon from "@/components/ProductIcon"
 import { card, ACCOUNT_TYPE_LABEL } from "@/lib/ui"
 
 
-type TxRow = Awaited<ReturnType<typeof getAccountTransactionsData>>["transactions"][number]
+type TxRow = Awaited<ReturnType<typeof getAccountStatement>>["transactions"][number]
 
 function groupByMonth(txs: TxRow[]) {
   const groups: [string, TxRow[]][] = []
@@ -26,7 +26,7 @@ function groupByMonth(txs: TxRow[]) {
 export default async function AccountDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   const { id } = await params
-  const { account, transactions } = await getAccountTransactionsData(session!.user!.id!, id)
+  const { account, transactions } = await getAccountStatement(session!.user!.id!, id)
 
   if (!account) notFound()
 

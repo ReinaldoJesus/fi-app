@@ -1,6 +1,6 @@
 "use client"
 import { useRef, useState, useTransition, useActionState } from "react"
-import { createSavingsGoal, updateSavingsGoal, contributeToGoal, deleteSavingsGoal } from "@/app/actions/savings"
+import { api } from "@/lib/api/client"
 import { useRouter } from "next/navigation"
 import ConfirmDialog from "@/components/ConfirmDialog"
 
@@ -104,7 +104,7 @@ function ContributeDialog({ goal, onClose }: { goal: Goal; onClose: () => void }
     const n = parseFloat(amount.replace(/\./g, "").replace(",", "."))
     if (!n || n <= 0) return
     startTransition(async () => {
-      await contributeToGoal(goal.id, n)
+      await api.savingsGoals.contribute(goal.id, n)
       router.refresh()
       onClose()
     })
@@ -141,15 +141,15 @@ export default function SavingsClient({ goals }: { goals: Goal[] }) {
   const [, startTransition] = useTransition()
 
   const [addState, addAction, addPending] = useActionState(async (_: unknown, fd: FormData) => {
-    const r = await createSavingsGoal(fd)
-    if (!r?.error) { addRef.current?.close(); router.refresh(); return undefined }
+    const r = await api.savingsGoals.create(fd)
+    if (!r.error) { addRef.current?.close(); router.refresh(); return undefined }
     return r
   }, undefined)
 
   const [editState, editAction, editPending] = useActionState(async (_: unknown, fd: FormData) => {
     if (!editing) return undefined
-    const r = await updateSavingsGoal(editing.id, fd)
-    if (!r?.error) { editRef.current?.close(); router.refresh(); return undefined }
+    const r = await api.savingsGoals.update(editing.id, fd)
+    if (!r.error) { editRef.current?.close(); router.refresh(); return undefined }
     return r
   }, undefined)
 
@@ -313,7 +313,7 @@ export default function SavingsClient({ goals }: { goals: Goal[] }) {
           onConfirm={() => {
             const goal = confirmDeleteGoal
             setConfirmDeleteGoal(null)
-            startTransition(async () => { await deleteSavingsGoal(goal.id); router.refresh() })
+            startTransition(async () => { await api.savingsGoals.remove(goal.id); router.refresh() })
           }}
           onCancel={() => setConfirmDeleteGoal(null)}
         />

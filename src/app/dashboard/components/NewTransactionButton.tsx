@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useActionState, useState } from "react"
-import { createTransaction } from "@/app/actions/finance"
+import { useRouter } from "next/navigation"
+import { api } from "@/lib/api/client"
 import { QuickActionContent, quickActionCls } from "@/components/QuickAction"
 
 type Account = { id: string; name: string; type?: string }
@@ -21,18 +22,22 @@ export default function NewTransactionButton({
   variant?: "button" | "income" | "expense"
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const router = useRouter()
   const initialType = variant === "income" ? "INCOME" : "EXPENSE"
   const [type, setType] = useState<"INCOME" | "EXPENSE">(initialType)
   const [selectedCategoryId, setSelectedCategoryId] = useState("")
-  const today = new Date().toISOString().split("T")[0]
+  const today = new Date().toLocaleDateString("en-CA")
 
   const budgetInfo = type === "EXPENSE" && selectedCategoryId && budgetStatus?.[selectedCategoryId]
     ? budgetStatus[selectedCategoryId]
     : null
 
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
-    const result = await createTransaction(formData)
-    if (!result?.error) dialogRef.current?.close()
+    const result = await api.transactions.create(formData)
+    if (!result.error) {
+      dialogRef.current?.close()
+      router.refresh()
+    }
     return result
   }, undefined)
 

@@ -1,7 +1,7 @@
 "use client"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { deleteAccount } from "@/app/actions/finance"
+import { api } from "@/lib/api/client"
 import ConfirmDialog from "@/components/ConfirmDialog"
 
 export default function AccountDeleteButton({ accountId, accountName, txCount }: {
@@ -31,7 +31,7 @@ export default function AccountDeleteButton({ accountId, accountName, txCount }:
           onConfirm={() => {
             setConfirm(false)
             startTransition(async () => {
-              await deleteAccount(accountId)
+              await api.accounts.remove(accountId)
               router.refresh()
             })
           }}

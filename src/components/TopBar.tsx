@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useRef, useState } from "react"
 import { logout } from "@/app/actions/auth"
-import { saveTheme } from "@/app/actions/profile"
+import { api } from "@/lib/api/client"
 import { useBalanceVisibility } from "@/contexts/BalanceVisibility"
 import BrandMark from "@/components/BrandMark"
 import { NAV, NAV_SECTIONS, currentNavItem, isNavActive, SunIcon, MoonIcon, AutoIcon } from "@/components/nav"
@@ -159,7 +159,7 @@ function MobileMenu({ open, onClose, urgentSubsCount }: { open: boolean; onClose
 
   function changeTheme(value: string) {
     setTheme(value)
-    saveTheme(value)
+    api.me.update({ theme: value as "light" | "dark" | "system" })
   }
 
   if (!open) return null

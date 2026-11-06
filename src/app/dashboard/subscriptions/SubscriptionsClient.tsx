@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useActionState, useTransition, useState } from "react"
-import { createSubscription, updateSubscription, toggleSubscription, deleteSubscription } from "@/app/actions/subscriptions"
+import { useRouter } from "next/navigation"
+import { api } from "@/lib/api/client"
 import ConfirmDialog from "@/components/ConfirmDialog"
 
 type Sub = {
@@ -176,23 +177,29 @@ function SubForm({
 }
 
 export default function SubscriptionsClient({ initialSubs }: { initialSubs: Sub[] }) {
+  const router = useRouter()
   const addRef = useRef<HTMLDialogElement>(null)
   const editRef = useRef<HTMLDialogElement>(null)
   const [editingSub, setEditingSub] = useState<Sub | null>(null)
   const [, startTransition] = useTransition()
 
   const [addState, addAction, addPending] = useActionState(async (_: unknown, formData: FormData) => {
-    const result = await createSubscription(formData)
-    if (!result?.error) { addRef.current?.close(); return undefined }
+    const result = await api.subscriptions.create(formData)
+    if (!result.error) { addRef.current?.close(); router.refresh(); return undefined }
     return result
   }, undefined)
 
   const [editState, editAction, editPending] = useActionState(async (_: unknown, formData: FormData) => {
     if (!editingSub) return undefined
-    const result = await updateSubscription(editingSub.id, formData)
-    if (!result?.error) { editRef.current?.close(); return undefined }
+    const result = await api.subscriptions.update(editingSub.id, formData)
+    if (!result.error) { editRef.current?.close(); router.refresh(); return undefined }
     return result
   }, undefined)
+
+  const toggle = (id: string, active: boolean) =>
+    startTransition(async () => { await api.subscriptions.update(id, { active }); router.refresh() })
+  const remove = (id: string) =>
+    startTransition(async () => { await api.subscriptions.remove(id); router.refresh() })
 
   const sorted = [...initialSubs].sort((a, b) => {
     if (!a.active && b.active) return 1
@@ -263,8 +270,8 @@ export default function SubscriptionsClient({ initialSubs }: { initialSubs: Sub[
           {active.map(sub => (
             <SubCard key={sub.id} sub={sub}
               onEdit={() => openEdit(sub)}
-              onToggle={(id, v) => startTransition(() => { toggleSubscription(id, v) })}
-              onDelete={(id) => startTransition(() => { deleteSubscription(id) })} />
+              onToggle={toggle}
+              onDelete={remove} />
           ))}
         </div>
       )}
@@ -277,8 +284,8 @@ export default function SubscriptionsClient({ initialSubs }: { initialSubs: Sub[
             {inactive.map(sub => (
               <SubCard key={sub.id} sub={sub}
                 onEdit={() => openEdit(sub)}
-                onToggle={(id, v) => startTransition(() => { toggleSubscription(id, v) })}
-                onDelete={(id) => startTransition(() => { deleteSubscription(id) })} />
+                onToggle={toggle}
+                onDelete={remove} />
             ))}
           </div>
         </div>

@@ -1,28 +1,14 @@
 import { auth } from "@/auth"
-import { prisma } from "@/lib/prisma"
+import { getProfile } from "@/server/services/profile"
+import { listAccounts } from "@/server/services/accounts"
 import ProfileClient from "./ProfileClient"
 
 export default async function ProfilePage() {
   const session = await auth()
   const userId = session!.user!.id!
 
-  const [user, accounts] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        budgetCarryOver: true,
-        notifSubscriptions: true,
-        notifInactivity: true,
-        hideAmountsOnStart: true,
-        defaultAccountId: true,
-      },
-    }),
-    prisma.finAccount.findMany({
-      where: { userId },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ])
+  const [user, allAccounts] = await Promise.all([getProfile(userId), listAccounts(userId)])
+  const accounts = allAccounts.map(a => ({ id: a.id, name: a.name })).sort((x, y) => x.name.localeCompare(y.name))
 
   return (
     <ProfileClient

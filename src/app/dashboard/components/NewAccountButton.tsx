@@ -1,7 +1,7 @@
 "use client"
 import { useRef, useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createAccount } from "@/app/actions/finance"
+import { api } from "@/lib/api/client"
 import { CURRENCIES } from "@/lib/fmt"
 
 const ACCOUNT_TYPES = [
@@ -24,8 +24,8 @@ export default function NewAccountButton() {
   const [showSugg, setShowSugg] = useState(false)
 
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
-    const result = await createAccount(formData)
-    if (!result?.error) {
+    const result = await api.accounts.create(formData)
+    if (!result.error) {
       dialogRef.current?.close()
       setAccountType("CHECKING")
       setCurrency("CLP")

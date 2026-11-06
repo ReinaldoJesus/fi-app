@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { logout } from "@/app/actions/auth"
-import { saveTheme } from "@/app/actions/profile"
+import { api } from "@/lib/api/client"
 import BrandMark from "@/components/BrandMark"
 import { NAV, NAV_SECTIONS, isNavActive, SunIcon, MoonIcon, AutoIcon } from "@/components/nav"
 
@@ -28,7 +28,7 @@ export default function Sidebar({ userName, userEmail, userImage, urgentSubsCoun
 
   function changeTheme(value: string) {
     setTheme(value)
-    saveTheme(value)
+    api.me.update({ theme: value as "light" | "dark" | "system" })
   }
 
   const initial = (userName ?? userEmail ?? "U")[0].toUpperCase()

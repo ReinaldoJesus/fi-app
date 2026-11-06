@@ -1,8 +1,7 @@
 import Link from "next/link"
 import { auth } from "@/auth"
-import { prisma } from "@/lib/prisma"
-import { getDashboardData } from "@/app/lib/dashboard"
-import { generateDueRecurring } from "@/app/actions/recurring"
+import { getSummary } from "@/server/services/reports"
+import { generateDueRecurring } from "@/server/services/recurring"
 import NewTransactionButton from "./components/NewTransactionButton"
 import NewAccountButton from "./components/NewAccountButton"
 import OnboardingBanner from "./components/OnboardingBanner"
@@ -30,17 +29,15 @@ export default async function DashboardPage() {
 
   await generateDueRecurring(userId)
 
-  const [raw, userSettings] = await Promise.all([
-    getDashboardData(userId),
-    prisma.user.findUnique({ where: { id: userId }, select: { defaultAccountId: true } }),
-  ])
+  const raw = await getSummary(userId)
+  const userSettings = { defaultAccountId: raw.defaultAccountId }
 
   const budgetStatus = Object.fromEntries(
     raw.budgetProgress.map(b => [b.categoryId, { budget: b.budget, spent: b.spent }])
   )
   const { checkingBalance, creditDebt, netBalance, incomeMonth, expensesMonth, recentTransactions, categories, subscriptions, budgetProgress } = raw
-  const accounts = raw.accounts.map((a) => ({ ...a, balance: Number(a.balance), creditLimit: a.creditLimit ? Number(a.creditLimit) : null }))
-  const activeSubs = subscriptions.map(s => ({ ...s, amount: Number(s.amount) }))
+  const accounts = raw.accounts
+  const activeSubs = subscriptions
   const totalSubsMonthly = activeSubs.reduce((sum, s) => sum + s.amount, 0)
 
   const firstName = session!.user!.name?.split(" ")[0] ?? "Usuario"

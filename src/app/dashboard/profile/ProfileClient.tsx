@@ -1,7 +1,6 @@
 "use client"
 import { useActionState, useState, useTransition } from "react"
-import { updateProfile } from "@/app/actions/auth"
-import { saveSettings } from "@/app/actions/profile"
+import { api } from "@/lib/api/client"
 import { useSession } from "next-auth/react"
 
 type Account = { id: string; name: string }
@@ -67,9 +66,20 @@ export default function ProfileClient({
   const [, startSave] = useTransition()
 
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
-    const result = await updateProfile(undefined, formData)
-    if (result.success) await update()
-    return result
+    const name = String(formData.get("name") ?? "").trim()
+    const currentPassword = String(formData.get("currentPassword") ?? "")
+    const newPassword = String(formData.get("newPassword") ?? "")
+
+    if (name) {
+      const r = await api.me.update({ name })
+      if (r.error) return { error: r.error }
+    }
+    if (newPassword) {
+      const r = await api.me.changePassword({ currentPassword, newPassword })
+      if (r.error) return { error: r.error }
+    }
+    await update()
+    return { success: "Cambios guardados correctamente" }
   }, undefined)
 
   const user = session?.user
@@ -81,7 +91,7 @@ export default function ProfileClient({
     setSettings(next)
     setSettingsSaved(false)
     startSave(async () => {
-      await saveSettings({ [key]: value })
+      await api.me.update({ [key]: value })
       setSettingsSaved(true)
       setTimeout(() => setSettingsSaved(false), 2000)
     })

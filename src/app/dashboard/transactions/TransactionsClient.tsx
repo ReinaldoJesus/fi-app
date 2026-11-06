@@ -1,8 +1,7 @@
 "use client"
 import { useRef, useState, useTransition, useMemo, useActionState } from "react"
 import { useRouter } from "next/navigation"
-import { updateTransaction, deleteTransaction, importTransactions } from "@/app/actions/finance"
-import { createRecurring, toggleRecurring, deleteRecurring } from "@/app/actions/recurring"
+import { api } from "@/lib/api/client"
 import NewTransactionButton from "../components/NewTransactionButton"
 import NewTransferButton from "../components/NewTransferButton"
 import ConfirmDialog from "@/components/ConfirmDialog"
@@ -112,6 +111,7 @@ export default function TransactionsClient({
   const [importAccountId, setImportAccountId] = useState("")
   const [importing, setImporting] = useState(false)
   const [importDone, setImportDone] = useState<number | null>(null)
+  const [importError, setImportError] = useState("")
   const [importDupeCount, setImportDupeCount] = useState(0)
 
   // Recurring state
@@ -136,8 +136,8 @@ export default function TransactionsClient({
 
   const [editState, editAction, editPending] = useActionState(async (_: unknown, fd: FormData) => {
     if (!editing) return undefined
-    const r = await updateTransaction(editing.id, fd)
-    if (!r?.error) {
+    const r = await api.transactions.update(editing.id, fd)
+    if (!r.error) {
       editRef.current?.close()
       router.refresh()
       return undefined
@@ -187,10 +187,15 @@ export default function TransactionsClient({
   async function confirmImport() {
     if (!importRows.length) return
     setImporting(true)
-    const result = await importTransactions(importRows)
+    setImportError("")
+    const result = await api.transactions.import(
+      importRows.map(r => ({ ...r, type: r.type as "INCOME" | "EXPENSE" })),
+    )
     setImporting(false)
-    if ("imported" in result) {
-      setImportDone(result.imported ?? 0)
+    if (!result.ok) {
+      setImportError(result.error)
+    } else {
+      setImportDone(result.data.imported)
       setImportRows([])
       router.refresh()
       setTimeout(() => { importRef.current?.close(); setImportDone(null) }, 1500)
@@ -205,7 +210,7 @@ export default function TransactionsClient({
   function handleDelete(id: string) {
     setDeletingId(id)
     startTransition(async () => {
-      await deleteTransaction(id)
+      await api.transactions.remove(id)
       setDeletingId(null)
       router.refresh()
     })
@@ -217,7 +222,7 @@ export default function TransactionsClient({
     if (!rAccountId || !amount || !day) { setRError("Completa todos los campos requeridos"); return }
     setRSaving(true)
     setRError("")
-    const r = await createRecurring({
+    const r = await api.recurring.create({
       accountId: rAccountId,
       categoryId: rCategoryId || null,
       type: rType,
@@ -226,7 +231,7 @@ export default function TransactionsClient({
       dayOfMonth: day,
     })
     setRSaving(false)
-    if (r?.error) { setRError(r.error); return }
+    if (r.error) { setRError(r.error); return }
     router.refresh()
     setRAmount(""); setRDescription(""); setRDay("1"); setRCategoryId("")
     setRecurringTab("list")
@@ -234,12 +239,15 @@ export default function TransactionsClient({
   }
 
   async function handleToggleRecurring(id: string, active: boolean) {
-    await toggleRecurring(id, active)
+    const r = await api.recurring.setActive(id, active)
+    if (r.error) return
     setRecurring(prev => prev.map(r => r.id === id ? { ...r, active } : r))
+    router.refresh()
   }
 
   async function handleDeleteRecurring(id: string) {
-    await deleteRecurring(id)
+    const r = await api.recurring.remove(id)
+    if (r.error) return
     setRecurring(prev => prev.filter(r => r.id !== id))
     router.refresh()
   }
@@ -573,6 +581,7 @@ export default function TransactionsClient({
         ) : (
           <>
             <p className="text-[12px] text-[#86868b] mb-1">{importRows.length} transacciones detectadas.</p>
+            {importError && <p className="text-[12px] text-[#ff3b30] mb-2">{importError}</p>}
             {importDupeCount > 0 && (
               <p className="text-[11px] text-[#ff9500] mb-3">{importDupeCount} fila{importDupeCount !== 1 ? "s" : ""} duplicada{importDupeCount !== 1 ? "s" : ""} eliminada{importDupeCount !== 1 ? "s" : ""} automáticamente.</p>
             )}

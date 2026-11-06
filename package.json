@@ -6,6 +6,7 @@
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "postinstall": "prisma generate",
+    "test:api": "node scripts/api-smoke.mjs",
     "start": "next start",
     "lint": "eslint"
   },

@@ -1,7 +1,7 @@
 "use client"
 import { useTransition, useState } from "react"
 import { useRouter } from "next/navigation"
-import { upsertBudget, copyBudgetsFromPreviousMonth } from "@/app/actions/budgets"
+import { api } from "@/lib/api/client"
 
 type Cat = { id: string; name: string; color: string; icon: string | null }
 
@@ -34,7 +34,10 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
 
   function save(catId: string) {
     const amount = parseFloat(inputVal.replace(/\./g, "").replace(",", ".")) || 0
-    startTransition(() => { upsertBudget(catId, amount, month, year) })
+    startTransition(async () => {
+      await api.budgets.set({ categoryId: catId, amount, month, year })
+      router.refresh()
+    })
     setEditing(null)
   }
 
@@ -100,8 +103,8 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
           </div>
           <button
             onClick={() => startTransition(async () => {
-              const r = await copyBudgetsFromPreviousMonth(month, year)
-              if ("error" in r) { setCopyError(r.error ?? ""); return }
+              const r = await api.budgets.copyPrevious(month, year)
+              if (r.error) { setCopyError(r.error); return }
               setCopyError("")
               router.refresh()
             })}

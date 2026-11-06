@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useActionState, useTransition, useState } from "react"
-import { createCategory, updateCategory, deleteCategory } from "@/app/actions/categories"
+import { useRouter } from "next/navigation"
+import { api } from "@/lib/api/client"
 import ConfirmDialog from "@/components/ConfirmDialog"
 
 type Cat = { id: string; name: string; type: string; icon: string | null; color: string; isDefault: boolean; _count?: { transactions: number } }
@@ -88,17 +89,18 @@ export default function CategoriesClient({ initialCats }: { initialCats: Cat[] }
   const [editing, setEditing] = useState<Cat | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Cat | null>(null)
   const [, startTransition] = useTransition()
+  const router = useRouter()
 
   const [addState, addAction, addPending] = useActionState(async (_: unknown, fd: FormData) => {
-    const r = await createCategory(fd)
-    if (!r?.error) { addRef.current?.close(); return undefined }
+    const r = await api.categories.create(fd)
+    if (!r.error) { addRef.current?.close(); router.refresh(); return undefined }
     return r
   }, undefined)
 
   const [editState, editAction, editPending] = useActionState(async (_: unknown, fd: FormData) => {
     if (!editing) return undefined
-    const r = await updateCategory(editing.id, fd)
-    if (!r?.error) { editRef.current?.close(); return undefined }
+    const r = await api.categories.update(editing.id, fd)
+    if (!r.error) { editRef.current?.close(); router.refresh(); return undefined }
     return r
   }, undefined)
 
@@ -187,7 +189,7 @@ export default function CategoriesClient({ initialCats }: { initialCats: Cat[] }
           onConfirm={() => {
             const id = confirmDelete.id
             setConfirmDelete(null)
-            startTransition(() => { deleteCategory(id) })
+            startTransition(async () => { await api.categories.remove(id); router.refresh() })
           }}
           onCancel={() => setConfirmDelete(null)}
         />

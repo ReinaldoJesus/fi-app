@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Clarifi · Finanzas personales
 
-## Getting Started
+App de finanzas personales (Next.js 16 + Prisma + Neon + NextAuth), instalable como PWA.
 
-First, run the development server:
+## Arquitectura: API-first
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Toda la lógica de negocio vive detrás de una API REST versionada, y la app web es un cliente más de esa API.
+
+```
+src/lib/api/schemas.ts    Contrato: esquemas Zod de cada request (validación + OpenAPI)
+src/lib/api/client.ts     Cliente tipado que usa la UI para todas las mutaciones
+src/lib/api/openapi.ts    Documento OpenAPI 3.1 generado desde los esquemas
+src/server/services/*     Lógica de negocio (saldos, presupuestos, recurrentes, reportes)
+src/server/http.ts        Wrapper de rutas: sesión, errores y formato de respuesta
+src/app/api/v1/**         Endpoints REST (delgados: validan y llaman a un servicio)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Escrituras**: los componentes cliente llaman a `/api/v1` mediante `api.*` y luego hacen `router.refresh()`.
+- **Lecturas**: las páginas del servidor llaman a los mismos servicios que usan los endpoints. Next.js recomienda no hacer HTTP al propio servidor durante el render.
+- **Login y logout** siguen siendo server actions (`src/app/actions/auth.ts`), porque NextAuth tiene que fijar la cookie de sesión. El registro usa el mismo servicio que `POST /api/v1/auth/register`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Documentación
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Referencia interactiva: `/api/docs`
+- Contrato OpenAPI: `/api/v1/openapi.json`
+- Índice: `/api/v1`
 
-## Learn More
+Las respuestas son `{ "data": ... }` en caso de éxito y `{ "error": { "code", "message", "fields"? } }` en caso de error. Códigos posibles: 401 sin sesión, 404 si el recurso no existe o es de otra persona, 409 en conflicto y 422 si los datos son inválidos.
 
-To learn more about Next.js, take a look at the following resources:
+Para autenticarse se usa la cookie de sesión de NextAuth: inicia sesión en `/login` o con `POST /api/auth/callback/credentials`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Desarrollo
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install          # también ejecuta prisma generate
+npm run dev          # http://localhost:3000
+npm run test:api     # prueba end-to-end de /api/v1 contra el servidor de desarrollo
+```
 
-## Deploy on Vercel
+`npm run test:api [baseUrl]` necesita `TEST_USER_EMAIL` y `TEST_USER_PASSWORD` en `.env.local`; si esa cuenta no existe, la crea. Usa por defecto `http://localhost:3001`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vercel publica automáticamente cada push a `main`. Los cambios en `prisma/schema.prisma` no se aplican solos: las migraciones hay que correrlas aparte contra Neon.

@@ -1,0 +1,91 @@
+import "server-only"
+import { z } from "zod"
+import { revalidatePath } from "next/cache"
+import { auth } from "@/auth"
+import { ApiError, unauthorized } from "./errors"
+
+/**
+ * Response envelope for /api/v1:
+ *   success → { "data": ... }
+ *   failure → { "error": { "code", "message", "fields"? } }
+ */
+export function ok(data: unknown, status = 200) {
+  return Response.json({ data }, { status })
+}
+
+export function fail(err: ApiError) {
+  return Response.json(
+    { error: { code: err.code, message: err.message, ...(err.fields ? { fields: err.fields } : {}) } },
+    { status: err.status },
+  )
+}
+
+function toApiError(err: unknown): ApiError {
+  if (err instanceof ApiError) return err
+  if (err instanceof z.ZodError) {
+    const fields: Record<string, string[]> = {}
+    for (const issue of err.issues) {
+      const key = issue.path.join(".") || "_"
+      ;(fields[key] ??= []).push(issue.message)
+    }
+    return new ApiError(422, "validation_error", err.issues[0]?.message ?? "Datos inválidos", fields)
+  }
+  const e = err as { message?: string; error?: unknown; stack?: string }
+  console.error("[api] unhandled error", e?.message ?? "", e?.error ?? "", e?.stack ?? err)
+  return new ApiError(500, "internal_error", "Error interno del servidor")
+}
+
+export async function requireUserId(): Promise<string> {
+  const session = await auth()
+  const id = session?.user?.id
+  if (!id) throw unauthorized()
+  return id
+}
+
+/** Parses a JSON body; an empty body is treated as {}. */
+export async function readJson(req: Request): Promise<unknown> {
+  const text = await req.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new ApiError(400, "invalid_json", "El cuerpo de la petición no es JSON válido")
+  }
+}
+
+export function readQuery(req: Request): Record<string, string> {
+  return Object.fromEntries(new URL(req.url).searchParams)
+}
+
+type Ctx<P> = { params: Promise<P> }
+type Handler<P> = (args: { req: Request; userId: string; params: P }) => Promise<Response>
+
+/**
+ * Wraps an authenticated route handler: resolves the session user (401 otherwise),
+ * maps thrown ApiError/ZodError to the error envelope, and for mutating methods
+ * revalidates the dashboard so server-rendered pages show fresh data.
+ */
+export function withUser<P = Record<string, never>>(handler: Handler<P>) {
+  return async (req: Request, ctx: Ctx<P>): Promise<Response> => {
+    try {
+      const userId = await requireUserId()
+      const params = (await ctx.params) ?? ({} as P)
+      const res = await handler({ req, userId, params })
+      if (req.method !== "GET" && res.ok) revalidatePath("/dashboard", "layout")
+      return res
+    } catch (err) {
+      return fail(toApiError(err))
+    }
+  }
+}
+
+/** Same as withUser but without authentication (e.g. registration). */
+export function withPublic(handler: (args: { req: Request }) => Promise<Response>) {
+  return async (req: Request): Promise<Response> => {
+    try {
+      return await handler({ req })
+    } catch (err) {
+      return fail(toApiError(err))
+    }
+  }
+}
