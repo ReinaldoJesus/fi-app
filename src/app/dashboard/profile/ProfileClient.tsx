@@ -88,9 +88,9 @@ export default function ProfileClient({
   }
 
   return (
-    <div className="max-w-xl mx-auto px-5 lg:px-10 py-10 space-y-6">
+    <div className="max-w-xl mx-auto px-4 lg:px-8 py-6 lg:py-8 space-y-6">
 
-      <h1 className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Perfil</h1>
+      <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Perfil</h1>
 
       {/* Avatar */}
       <div className={`${card} flex items-center gap-4`}>

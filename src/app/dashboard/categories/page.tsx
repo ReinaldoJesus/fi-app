@@ -10,7 +10,7 @@ export default async function CategoriesPage() {
     include: { _count: { select: { transactions: true } } },
   })
   return (
-    <div className="max-w-2xl mx-auto px-5 lg:px-10 py-10">
+    <div className="max-w-2xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
       <CategoriesClient initialCats={cats} />
     </div>
   )

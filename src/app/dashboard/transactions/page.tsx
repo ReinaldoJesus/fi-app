@@ -34,7 +34,7 @@ export default async function TransactionsPage() {
   const recurring = recurringList.map(r => ({ ...r, amount: Number(r.amount) }))
 
   return (
-    <div className="max-w-3xl mx-auto px-5 lg:px-10 py-10 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 lg:px-8 py-6 lg:py-8 space-y-6">
       <TransactionsClient
         initialTransactions={transactions}
         accounts={accounts}

@@ -9,7 +9,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const data = await getAnalyticsData(session!.user!.id!, period)
 
   return (
-    <div className="max-w-3xl mx-auto px-5 lg:px-10 py-10">
+    <div className="max-w-3xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
       <AnalyticsClient
         months={data.months}
         byCategory={data.byCategory}

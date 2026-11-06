@@ -56,7 +56,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
   const budgetMap = Object.fromEntries(budgets.map(b => [b.categoryId, Number(b.amount)]))
 
   return (
-    <div className="max-w-2xl mx-auto px-5 lg:px-10 py-10">
+    <div className="max-w-2xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
       <BudgetsClient
         categories={categories}
         spent={spent}

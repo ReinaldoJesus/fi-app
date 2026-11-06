@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useActionState, useState } from "react"
 import { createTransaction } from "@/app/actions/finance"
+import { QuickActionContent, quickActionCls } from "@/components/QuickAction"
 
 type Account = { id: string; name: string; type?: string }
 type Category = { id: string; name: string; type: string; icon: string | null }
@@ -10,15 +11,18 @@ const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase track
 const fmt = (n: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n)
 
 export default function NewTransactionButton({
-  accounts, categories, defaultAccountId, budgetStatus,
+  accounts, categories, defaultAccountId, budgetStatus, variant = "button",
 }: {
   accounts: Account[]
   categories: Category[]
   defaultAccountId?: string | null
   budgetStatus?: Record<string, { budget: number; spent: number }>
+  /** "button" = default dark button; "income"/"expense" = quick-action tile that opens preset to that type */
+  variant?: "button" | "income" | "expense"
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE")
+  const initialType = variant === "income" ? "INCOME" : "EXPENSE"
+  const [type, setType] = useState<"INCOME" | "EXPENSE">(initialType)
   const [selectedCategoryId, setSelectedCategoryId] = useState("")
   const today = new Date().toISOString().split("T")[0]
 
@@ -34,13 +38,20 @@ export default function NewTransactionButton({
 
   return (
     <>
-      <button onClick={() => dialogRef.current?.showModal()}
-        className="flex items-center gap-1.5 px-4 py-2 bg-[#1d1d1f] dark:bg-white hover:opacity-90 text-white dark:text-[#1d1d1f] text-[13px] font-semibold rounded-xl transition-all">
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-        Nueva
-      </button>
+      {variant === "button" ? (
+        <button onClick={() => dialogRef.current?.showModal()}
+          className="flex items-center gap-1.5 px-4 py-2 bg-[#1d1d1f] dark:bg-white hover:opacity-90 text-white dark:text-[#1d1d1f] text-[13px] font-semibold rounded-xl transition-all">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Nueva
+        </button>
+      ) : (
+        <button type="button" className={quickActionCls}
+          onClick={() => { setType(initialType); setSelectedCategoryId(""); dialogRef.current?.showModal() }}>
+          <QuickActionContent kind={variant} label={variant === "income" ? "Ingreso" : "Gasto"} />
+        </button>
+      )}
 
       <dialog ref={dialogRef}
         className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-black/[0.08] dark:border-white/[0.08] backdrop:bg-black/40 open:flex open:flex-col m-auto"

@@ -1,6 +1,7 @@
 "use client"
 import { useActionState } from "react"
 import Link from "next/link"
+import AuthShell from "@/components/AuthShell"
 import { loginWithCredentials, loginWithGoogle, loginWithGitHub } from "@/app/actions/auth"
 
 const inputCls = "w-full px-4 py-3 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px] transition-all"
@@ -9,21 +10,7 @@ export default function LoginPage() {
   const [state, action, pending] = useActionState(loginWithCredentials, undefined)
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] dark:bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#1d1d1f] dark:bg-white mb-4">
-            <svg className="w-6 h-6 text-white dark:text-[#1d1d1f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-              <path strokeLinecap="round" d="M17 6a8 8 0 1 0 0 12" />
-            </svg>
-          </div>
-          <h1 className="text-[22px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Clarifi</h1>
-          <p className="text-[#86868b] text-[14px] mt-0.5">Gestiona tus finanzas personales</p>
-        </div>
-
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_20px_rgba(0,0,0,0.08)] dark:shadow-none p-8">
-          <h2 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white mb-6">Iniciar sesión</h2>
+    <AuthShell title="Iniciar sesión" subtitle="Ingresa a tu banca personal Clarifi.">
 
           {state?.error && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-[#ff3b30]/08 border border-[#ff3b30]/20 text-[#ff3b30] text-[13px]">
@@ -42,7 +29,7 @@ export default function LoginPage() {
             </div>
             <button type="submit" disabled={pending}
               className="w-full py-3 bg-[#1d1d1f] dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-[#1d1d1f] font-semibold rounded-xl text-[14px] transition-all mt-1">
-              {pending ? "Entrando..." : "Entrar"}
+              {pending ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
 
@@ -81,10 +68,6 @@ export default function LoginPage() {
               </button>
             </form>
           </div>
-        </div>
-
-        <p className="text-center text-[#86868b] text-[12px] mt-6">© 2026 Clarifi</p>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

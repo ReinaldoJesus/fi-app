@@ -80,7 +80,7 @@ export default function AnalyticsClient({
 
       <div className="flex items-center justify-between mb-6 no-print">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Análisis</h1>
+          <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Análisis</h1>
           <p className="text-[14px] text-[#86868b] mt-0.5">Últimos {period} meses</p>
         </div>
         <div className="flex items-center gap-2">

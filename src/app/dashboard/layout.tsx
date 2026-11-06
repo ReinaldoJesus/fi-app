@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { SessionProvider } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
+import TopBar from "@/components/TopBar"
 import { BalanceVisibilityProvider } from "@/contexts/BalanceVisibility"
 import { prisma } from "@/lib/prisma"
 
@@ -79,16 +80,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <SessionProvider session={session}>
     <BalanceVisibilityProvider initialHidden={user?.hideAmountsOnStart ?? false}>
-      <div className="flex bg-[#e8e8ed] dark:bg-black min-h-screen">
+      <div className="flex bg-[#f2f2f7] dark:bg-black min-h-screen">
         <Sidebar
           userName={session.user.name ?? null}
           userEmail={session.user.email ?? null}
           userImage={session.user.image ?? null}
           urgentSubsCount={urgentSubsCount}
           dbTheme={dbTheme}
-          notifications={notifications}
         />
-        <div className="flex-1 min-w-0 pb-16 lg:pb-0">
+        <div className="flex-1 min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <TopBar
+            userName={session.user.name ?? null}
+            userEmail={session.user.email ?? null}
+            userImage={session.user.image ?? null}
+            urgentSubsCount={urgentSubsCount}
+            notifications={notifications}
+          />
           {children}
         </div>
       </div>

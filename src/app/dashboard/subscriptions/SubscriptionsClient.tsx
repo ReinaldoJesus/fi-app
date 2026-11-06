@@ -213,7 +213,7 @@ export default function SubscriptionsClient({ initialSubs }: { initialSubs: Sub[
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Suscripciones</h1>
+          <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Suscripciones</h1>
           <p className="text-[14px] text-[#86868b] mt-0.5">Servicios que pagas mes a mes</p>
         </div>
         <button onClick={() => addRef.current?.showModal()}

@@ -109,7 +109,7 @@ export default function CategoriesClient({ initialCats }: { initialCats: Cat[] }
     <>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Categorías</h1>
+          <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Categorías</h1>
           <p className="text-[14px] text-[#86868b] mt-0.5">Organiza tus ingresos y gastos</p>
         </div>
         <button onClick={() => addRef.current?.showModal()}

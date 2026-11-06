@@ -274,7 +274,7 @@ export default function TransactionsClient({
     <>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Transacciones</h1>
+          <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Movimientos</h1>
           <p className="text-[14px] text-[#86868b] mt-0.5">{initialTransactions.length} registros · 2 años</p>
         </div>
         <div className="flex items-center gap-2">

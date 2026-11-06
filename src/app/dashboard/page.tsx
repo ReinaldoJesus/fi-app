@@ -6,7 +6,12 @@ import { generateDueRecurring } from "@/app/actions/recurring"
 import NewTransactionButton from "./components/NewTransactionButton"
 import NewAccountButton from "./components/NewAccountButton"
 import OnboardingBanner from "./components/OnboardingBanner"
+import NewTransferButton from "./components/NewTransferButton"
 import PrivateAmount from "@/components/PrivateAmount"
+import ProductIcon from "@/components/ProductIcon"
+import { QuickActionContent, quickActionCls } from "@/components/QuickAction"
+import { card, sectionTitle, eyebrow, linkAction, ACCOUNT_TYPE_LABEL } from "@/lib/ui"
+import { fmtCurrency } from "@/lib/fmt"
 
 function clp(n: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n)
@@ -42,13 +47,6 @@ export default async function DashboardPage() {
   const netPositive = netBalance >= 0
   const savingsRate = incomeMonth > 0 ? Math.round(((incomeMonth - expensesMonth) / incomeMonth) * 100) : null
   const month = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date())
-
-  // Upcoming subscriptions (≤ 3 days)
-  const urgentSubs = activeSubs
-    .filter(s => s.billingDay != null)
-    .map(s => ({ ...s, days: daysUntil(s.billingDay!) }))
-    .filter(s => s.days <= 3)
-    .sort((a, b) => a.days - b.days)
 
   // Onboarding steps status
   const onboardingSteps = [
@@ -166,231 +164,303 @@ export default async function DashboardPage() {
     )
   }
 
+
+  const hour = Number(new Intl.DateTimeFormat("es-CL", { hour: "numeric", hour12: false, timeZone: "America/Santiago" }).format(new Date()))
+  const greeting = hour < 12 ? "Buenos días" : hour < 20 ? "Buenas tardes" : "Buenas noches"
+
+  const productGroups = [
+    { title: "Cuentas", items: accounts.filter(a => a.type === "CHECKING" || a.type === "SAVINGS" || a.type === "CASH") },
+    { title: "Tarjetas de crédito", items: accounts.filter(a => a.type === "CREDIT_CARD") },
+    { title: "Inversiones", items: accounts.filter(a => a.type === "INVESTMENT") },
+  ].filter(g => g.items.length > 0)
+
+  const upcomingSubs = activeSubs
+    .filter(s => s.billingDay != null)
+    .map(s => ({ ...s, days: daysUntil(s.billingDay!) }))
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 4)
+
+  const monthResult = incomeMonth - expensesMonth
+  const spentPct = incomeMonth > 0 ? Math.min(100, Math.round((expensesMonth / incomeMonth) * 100)) : null
+  const dayFmt = new Intl.DateTimeFormat("es-CL", { day: "2-digit" })
+  const monFmt = new Intl.DateTimeFormat("es-CL", { month: "short" })
+
   return (
-    <div className="max-w-3xl mx-auto px-5 lg:px-10 py-10 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6 lg:py-8 space-y-6">
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight">Hola, {firstName}</h1>
-          <p className="text-[14px] text-[#86868b] mt-0.5 capitalize">{month}</p>
-        </div>
-        <NewTransactionButton accounts={accounts} categories={categories} defaultAccountId={userSettings?.defaultAccountId} budgetStatus={budgetStatus} />
-      </div>
-
-      {/* Onboarding progress widget */}
-      {!onboardingComplete && (
-        <OnboardingBanner steps={onboardingSteps} />
-      )}
-
-      {/* Subscription alerts */}
-      {urgentSubs.length > 0 && (
-        <div className="bg-[#ff9500]/[0.08] border border-[#ff9500]/[0.2] rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2.5">
-            <svg className="w-4 h-4 text-[#ff9500] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p className="text-[13px] font-semibold text-[#b36d00] dark:text-[#ff9500]">
-              {urgentSubs.length === 1 ? "Cobro próximo" : `${urgentSubs.length} cobros próximos`}
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            {urgentSubs.map(s => (
-              <div key={s.id} className="flex items-center justify-between">
-                <span className="text-[13px] text-[#86868b] flex items-center gap-1.5">
-                  <span>{s.icon ?? "📦"}</span>
-                  <span className="font-medium text-[#1d1d1f] dark:text-white">{s.name}</span>
-                  <span>·</span>
-                  <span className={s.days === 0 ? "text-[#ff3b30] font-semibold" : s.days === 1 ? "text-[#ff9500] font-medium" : "text-[#86868b]"}>
-                    {s.days === 0 ? "hoy" : s.days === 1 ? "mañana" : `en ${s.days} días`}
-                  </span>
-                </span>
-                <PrivateAmount value={clp(s.amount)} className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
-              </div>
-            ))}
-          </div>
-          <Link href="/dashboard/subscriptions"
-            className="inline-block mt-3 text-[12px] text-[#ff9500] font-semibold hover:opacity-70 transition-opacity">
-            Ver suscripciones →
-          </Link>
-        </div>
-      )}
-
-      {/* Position */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "En cuentas", value: clp(checkingBalance), cls: "text-[#1d1d1f] dark:text-white" },
-          { label: "Deuda TDC", value: creditDebt > 0 ? `−${clp(creditDebt)}` : clp(0), cls: "text-[#ff3b30]" },
-          {
-            label: "Balance neto",
-            value: netBalance === 0 ? clp(0) : netPositive ? clp(netBalance) : `−${clp(Math.abs(netBalance))}`,
-            cls: netPositive ? "text-[#1d1d1f] dark:text-white" : "text-[#ff3b30]",
-          },
-        ].map(({ label, value, cls }) => (
-          <div key={label} className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none border border-black/[0.09] dark:border-white/[0.06]">
-            <p className="text-[11px] font-medium text-[#86868b] uppercase tracking-wide mb-2">{label}</p>
-            <PrivateAmount value={value} className={`text-[17px] font-semibold tabular-nums leading-tight ${cls}`} />
-          </div>
-        ))}
-      </div>
-
-      {/* Monthly */}
-      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none border border-black/[0.09] dark:border-white/[0.06] overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-black/[0.06] dark:border-white/[0.05]">
-          <p className="text-[13px] font-medium text-[#86868b]">Este mes</p>
-        </div>
-        <div className="grid grid-cols-2 divide-x divide-black/[0.04] dark:divide-white/[0.06]">
-          <div className="px-5 py-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-[#34c759]/15 flex items-center justify-center">
-                <svg className="w-2.5 h-2.5 text-[#34c759]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
-                </svg>
-              </div>
-              <p className="text-[12px] text-[#86868b] font-medium">Ingresos</p>
-            </div>
-            <PrivateAmount value={clp(incomeMonth)} className="text-[20px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
-          </div>
-          <div className="px-5 py-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-[#ff3b30]/10 flex items-center justify-center">
-                <svg className="w-2.5 h-2.5 text-[#ff3b30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
-                </svg>
-              </div>
-              <p className="text-[12px] text-[#86868b] font-medium">Gastos</p>
-            </div>
-            <PrivateAmount value={clp(expensesMonth)} className="text-[20px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
-            {savingsRate !== null && (
-              <p className={`text-[11px] mt-1 font-medium ${savingsRate >= 0 ? "text-[#34c759]" : "text-[#ff3b30]"}`}>
-                {savingsRate >= 0 ? `${savingsRate}% guardado` : `${Math.abs(savingsRate)}% sobre ingresos`}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Subscriptions summary */}
+      {/* Greeting */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white">Suscripciones</p>
-          <Link href="/dashboard/subscriptions" className="text-[13px] text-[#007aff] font-medium hover:opacity-70 transition-opacity">
-            {activeSubs.length > 0 ? "Ver todas →" : "Agregar →"}
-          </Link>
-        </div>
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5">
-          {activeSubs.length === 0 ? (
-            <p className="text-[13px] text-[#86868b] text-center py-2">
-              Sin suscripciones activas. <Link href="/dashboard/subscriptions" className="text-[#007aff] font-medium">Agregar una</Link>
-            </p>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1">Activas</p>
-                  <p className="text-[28px] font-semibold text-[#1d1d1f] dark:text-white leading-none">{activeSubs.length}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1">Por mes</p>
-                  <PrivateAmount value={clp(totalSubsMonthly)} className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1">Al año</p>
-                  <PrivateAmount value={clp(totalSubsMonthly * 12)} className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
-                </div>
-              </div>
-              {urgentSubs.length > 0 && (
-                <div className="pt-3.5 border-t border-black/[0.05] dark:border-white/[0.05] space-y-2">
-                  {urgentSubs.map(s => (
-                    <div key={s.id} className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-[12px]">
-                        <span>{s.icon ?? "📦"}</span>
-                        <span className="font-medium text-[#1d1d1f] dark:text-white">{s.name}</span>
-                        <span className={`font-semibold ${s.days === 0 ? "text-[#ff3b30]" : "text-[#ff9500]"}`}>
-                          · {s.days === 0 ? "hoy" : s.days === 1 ? "mañana" : `en ${s.days} días`}
-                        </span>
-                      </span>
-                      <PrivateAmount value={clp(s.amount)} className="text-[12px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <p className="text-[13px] text-[#86868b] font-medium">{greeting},</p>
+        <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight leading-tight">{firstName}</h1>
       </div>
 
-      {/* Budget progress */}
-      {budgetProgress.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white">Presupuestos del mes</p>
-            <Link href="/dashboard/budgets" className="text-[13px] text-[#007aff] font-medium hover:opacity-70 transition-opacity">
-              Ver todos →
-            </Link>
-          </div>
-          <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.05] dark:divide-white/[0.05]">
-            {budgetProgress.slice(0, 5).map(b => {
-              const barColor = b.pct >= 100 ? "#ff3b30" : b.pct >= 80 ? "#ff9500" : "#34c759"
-              return (
-                <div key={b.categoryId} className="px-4 py-3.5">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px]">{b.icon ?? "📦"}</span>
-                      <span className="text-[13px] font-medium text-[#1d1d1f] dark:text-white">{b.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[12px] font-semibold tabular-nums" style={{ color: barColor }}>
-                        {b.pct}%
-                      </span>
-                      <span className="text-[11px] text-[#86868b] ml-1.5">
-                        <PrivateAmount value={`${clp(b.spent)} / ${clp(b.budget)}`} />
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${b.pct}%`, backgroundColor: barColor }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recent transactions */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white">Últimas transacciones</p>
-          <Link href="/dashboard/transactions" className="text-[13px] text-[#007aff] font-medium hover:opacity-70 transition-opacity">
-            Ver todas →
-          </Link>
-        </div>
-        {recentTransactions.length === 0 ? (
-          <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] px-5 py-10 text-center">
-            <p className="text-[#86868b] text-sm">Sin transacciones aún</p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
-            {recentTransactions.map((tx) => (
-              <div key={tx.id} className="flex items-center gap-3.5 px-4 py-3.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[15px] flex-shrink-0"
-                  style={{ backgroundColor: tx.category?.color ? `${tx.category.color}18` : "#f5f5f7" }}>
-                  {tx.category?.icon ?? (tx.type === "INCOME" ? "↑" : "↓")}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white truncate">{tx.description ?? tx.category?.name ?? "Sin descripción"}</p>
-                  <p className="text-[11px] text-[#86868b] mt-0.5">
-                    {tx.account.name} · {new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" }).format(new Date(tx.date))}
-                  </p>
-                </div>
+      {/* Balance hero */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1d1d1f] via-[#232326] to-[#2c2c2e] dark:from-[#1c1c1e] dark:via-[#161618] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08] text-white shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
+        <div className="pointer-events-none absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#007aff]/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-10 w-72 h-72 rounded-full bg-[#34c759]/10 blur-3xl" />
+        <div className="relative p-6 lg:p-8">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+            <div>
+              <p className="text-[11px] font-semibold text-white/55 uppercase tracking-[0.12em]">Saldo disponible</p>
+              <PrivateAmount value={clp(checkingBalance)} className="block mt-2 text-[38px] lg:text-[46px] font-semibold tracking-tight tabular-nums leading-none" />
+              <p className="mt-3 text-[12px] text-white/45">Cuentas corrientes y de ahorro</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:min-w-[340px]">
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] px-4 py-3">
+                <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] font-semibold">Deuda tarjetas</p>
+                <PrivateAmount value={creditDebt > 0 ? `−${clp(creditDebt)}` : clp(0)} className="block mt-1 text-[16px] font-semibold tabular-nums text-[#ff453a]" />
+              </div>
+              <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] px-4 py-3">
+                <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] font-semibold">Balance neto</p>
                 <PrivateAmount
-                  value={`${tx.type === "INCOME" ? "+" : "−"}${clp(Number(tx.amount))}`}
-                  className={`text-[13px] font-semibold tabular-nums flex-shrink-0 ${tx.type === "INCOME" ? "text-[#34c759]" : "text-[#1d1d1f] dark:text-white"}`}
+                  value={netBalance === 0 ? clp(0) : netPositive ? clp(netBalance) : `−${clp(Math.abs(netBalance))}`}
+                  className={`block mt-1 text-[16px] font-semibold tabular-nums ${netPositive ? "text-[#30d158]" : "text-[#ff453a]"}`}
                 />
               </div>
-            ))}
+            </div>
           </div>
-        )}
+
+          {/* Quick actions */}
+          <div className="mt-6 pt-4 border-t border-white/[0.08] grid grid-cols-5 gap-1">
+            <NewTransactionButton variant="income" accounts={accounts} categories={categories} defaultAccountId={userSettings?.defaultAccountId} budgetStatus={budgetStatus} />
+            <NewTransactionButton variant="expense" accounts={accounts} categories={categories} defaultAccountId={userSettings?.defaultAccountId} budgetStatus={budgetStatus} />
+            <NewTransferButton variant="tile" accounts={accounts} />
+            <Link href="/dashboard/transactions" className={quickActionCls}>
+              <QuickActionContent kind="statement" label="Cartola" />
+            </Link>
+            <Link href="/dashboard/budgets" className={quickActionCls}>
+              <QuickActionContent kind="budget" label="Presupuestos" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {!onboardingComplete && <OnboardingBanner steps={onboardingSteps} />}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Products */}
+          <section className={card}>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
+              <div>
+                <h2 className={sectionTitle}>Mis productos</h2>
+                <p className="text-[12px] text-[#86868b]">{accounts.length} {accounts.length === 1 ? "producto activo" : "productos activos"}</p>
+              </div>
+              <Link href="/dashboard/accounts" className={linkAction}>Administrar →</Link>
+            </div>
+            {productGroups.map(g => (
+              <div key={g.title} className="pb-1">
+                <p className={`${eyebrow} px-5 pt-4 pb-1`}>{g.title}</p>
+                <div className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+                  {g.items.map(a => {
+                    const isCredit = a.type === "CREDIT_CARD"
+                    const cur = a.currency ?? "CLP"
+                    const used = Math.abs(Math.min(0, a.balance))
+                    const limit = a.creditLimit ?? 0
+                    const pct = isCredit && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : null
+                    const barColor = pct == null ? "#86868b" : pct >= 80 ? "#ff3b30" : pct >= 50 ? "#ff9500" : "#34c759"
+                    const mainValue = isCredit
+                      ? (limit > 0 ? fmtCurrency(Math.max(0, limit - used), cur) : fmtCurrency(used, cur))
+                      : fmtCurrency(a.balance, cur)
+                    const mainLabel = isCredit ? (limit > 0 ? "Cupo disponible" : "Utilizado") : "Saldo"
+                    return (
+                      <Link key={a.id} href={`/dashboard/accounts/${a.id}`}
+                        className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-[#f5f5f7]/80 dark:hover:bg-white/[0.03] transition-colors">
+                        <ProductIcon type={a.type} color={a.color} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-white truncate">{a.name}</p>
+                          <p className="text-[12px] text-[#86868b] truncate">
+                            {ACCOUNT_TYPE_LABEL[a.type]}{a.bank ? ` · ${a.bank}` : ""}{cur !== "CLP" ? ` · ${cur}` : ""}
+                          </p>
+                          {pct != null && (
+                            <div className="mt-2 h-1 w-full max-w-[220px] rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[10px] text-[#86868b] font-semibold uppercase tracking-wide">{mainLabel}</p>
+                          <PrivateAmount value={mainValue}
+                            className={`block text-[15px] font-semibold tabular-nums ${!isCredit && a.balance < 0 ? "text-[#ff3b30]" : "text-[#1d1d1f] dark:text-white"}`} />
+                          {isCredit && limit > 0 && (
+                            <PrivateAmount value={`Usado ${fmtCurrency(used, cur)}`} className="block text-[11px] text-[#ff3b30] tabular-nums" />
+                          )}
+                        </div>
+                        <svg className="w-4 h-4 text-[#c7c7cc] dark:text-[#48484a] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* Recent movements */}
+          <section className={card}>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
+              <div>
+                <h2 className={sectionTitle}>Últimos movimientos</h2>
+                <p className="text-[12px] text-[#86868b]">Todas tus cuentas</p>
+              </div>
+              <Link href="/dashboard/transactions" className={linkAction}>Ver cartola →</Link>
+            </div>
+            {recentTransactions.length === 0 ? (
+              <p className="px-5 py-10 text-center text-[13px] text-[#86868b]">Sin movimientos aún</p>
+            ) : (
+              <div className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+                {recentTransactions.map(tx => {
+                  const d = new Date(tx.date)
+                  const isTransfer = tx.type === "TRANSFER"
+                  const isIncome = tx.type === "INCOME"
+                  return (
+                    <div key={tx.id} className="flex items-center gap-4 px-5 py-3.5">
+                      <div className="w-10 text-center flex-shrink-0">
+                        <p className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white leading-none tabular-nums">{dayFmt.format(d)}</p>
+                        <p className="text-[10px] uppercase text-[#86868b] font-semibold mt-1 tracking-wide">{monFmt.format(d).replace(".", "")}</p>
+                      </div>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-[15px] flex-shrink-0"
+                        style={{ backgroundColor: tx.category?.color ? `${tx.category.color}1f` : isTransfer ? "#007aff1f" : "#86868b1f" }}>
+                        {tx.category?.icon ?? (isIncome ? "↑" : isTransfer ? "⇄" : "↓")}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-white truncate">
+                          {tx.description ?? tx.category?.name ?? (isTransfer ? "Transferencia" : "Sin descripción")}
+                        </p>
+                        <p className="text-[12px] text-[#86868b] truncate">
+                          {tx.category?.name ?? (isTransfer ? "Transferencia" : isIncome ? "Abono" : "Cargo")} · {tx.account.name}
+                        </p>
+                      </div>
+                      <PrivateAmount
+                        value={`${isTransfer ? "" : isIncome ? "+" : "−"}${clp(Number(tx.amount))}`}
+                        className={`text-[14px] font-semibold tabular-nums flex-shrink-0 ${
+                          isIncome ? "text-[#34c759]" : isTransfer ? "text-[#007aff]" : "text-[#1d1d1f] dark:text-white"
+                        }`}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-6">
+
+          {/* Month summary */}
+          <section className={`${card} p-5`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={sectionTitle}>Resumen del mes</h2>
+              <span className="text-[12px] text-[#86868b] capitalize">{month}</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[13px] text-[#6e6e73] dark:text-[#8e8e93]">
+                  <span className="w-2 h-2 rounded-full bg-[#34c759]" />Ingresos
+                </span>
+                <PrivateAmount value={clp(incomeMonth)} className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[13px] text-[#6e6e73] dark:text-[#8e8e93]">
+                  <span className="w-2 h-2 rounded-full bg-[#ff3b30]" />Gastos
+                </span>
+                <PrivateAmount value={clp(expensesMonth)} className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
+              </div>
+              <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">Resultado</span>
+                <PrivateAmount
+                  value={`${monthResult >= 0 ? "+" : "−"}${clp(Math.abs(monthResult))}`}
+                  className={`text-[16px] font-semibold tabular-nums ${monthResult >= 0 ? "text-[#34c759]" : "text-[#ff3b30]"}`}
+                />
+              </div>
+            </div>
+            {spentPct !== null && (
+              <div className="mt-4">
+                <div className="h-2 rounded-full bg-[#34c759]/15 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${spentPct}%`, backgroundColor: spentPct >= 100 ? "#ff3b30" : spentPct >= 80 ? "#ff9500" : "#007aff" }} />
+                </div>
+                <p className="mt-2 text-[11px] text-[#86868b]">
+                  Has gastado el <span className="font-semibold text-[#1d1d1f] dark:text-white">{spentPct}%</span> de tus ingresos
+                  {savingsRate !== null && savingsRate > 0 && <> · ahorro {savingsRate}%</>}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* Budgets */}
+          <section className={card}>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
+              <h2 className={sectionTitle}>Presupuestos</h2>
+              <Link href="/dashboard/budgets" className={linkAction}>{budgetProgress.length > 0 ? "Ver todos →" : "Crear →"}</Link>
+            </div>
+            {budgetProgress.length === 0 ? (
+              <p className="px-5 py-6 text-[13px] text-[#86868b] text-center">Aún no fijas presupuestos este mes.</p>
+            ) : (
+              <div className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+                {budgetProgress.slice(0, 4).map(b => {
+                  const barColor = b.pct >= 100 ? "#ff3b30" : b.pct >= 80 ? "#ff9500" : "#34c759"
+                  return (
+                    <div key={b.categoryId} className="px-5 py-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="flex items-center gap-2 text-[13px] font-medium text-[#1d1d1f] dark:text-white min-w-0">
+                          <span>{b.icon ?? "📦"}</span><span className="truncate">{b.name}</span>
+                        </span>
+                        <span className="text-[12px] font-semibold tabular-nums" style={{ color: barColor }}>{b.pct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: barColor }} />
+                      </div>
+                      <PrivateAmount value={`${clp(b.spent)} de ${clp(b.budget)}`} className="block mt-1 text-[11px] text-[#86868b] tabular-nums" />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Upcoming charges */}
+          <section className={card}>
+            <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
+              <div>
+                <h2 className={sectionTitle}>Próximos cobros</h2>
+                {activeSubs.length > 0 && (
+                  <p className="text-[12px] text-[#86868b]">
+                    <PrivateAmount value={clp(totalSubsMonthly)} /> al mes · {activeSubs.length} {activeSubs.length === 1 ? "suscripción" : "suscripciones"}
+                  </p>
+                )}
+              </div>
+              <Link href="/dashboard/subscriptions" className={linkAction}>{activeSubs.length > 0 ? "Ver →" : "Agregar →"}</Link>
+            </div>
+            {upcomingSubs.length === 0 ? (
+              <p className="px-5 py-6 text-[13px] text-[#86868b] text-center">Sin cobros programados.</p>
+            ) : (
+              <div className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+                {upcomingSubs.map(s => {
+                  const urgent = s.days <= 3
+                  return (
+                    <div key={s.id} className="flex items-center gap-3 px-5 py-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-[16px] flex-shrink-0 ${urgent ? "bg-[#ff9500]/[0.14]" : "bg-[#f5f5f7] dark:bg-white/[0.06]"}`}>
+                        {s.icon ?? "📦"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white truncate">{s.name}</p>
+                        <p className={`text-[11px] ${s.days === 0 ? "text-[#ff3b30] font-semibold" : urgent ? "text-[#ff9500] font-semibold" : "text-[#86868b]"}`}>
+                          {s.days === 0 ? "Cobra hoy" : s.days === 1 ? "Cobra mañana" : `En ${s.days} días · día ${s.billingDay}`}
+                        </p>
+                      </div>
+                      <PrivateAmount value={clp(s.amount)} className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   )
