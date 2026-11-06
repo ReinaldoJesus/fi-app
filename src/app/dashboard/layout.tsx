@@ -27,6 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           userName={session.user.name ?? null}
           userEmail={session.user.email ?? null}
           userImage={session.user.image ?? null}
+          provider={session.user.provider}
           urgentSubsCount={urgentSubsCount}
           dbTheme={dbTheme}
         />
@@ -35,6 +36,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             userName={session.user.name ?? null}
             userEmail={session.user.email ?? null}
             userImage={session.user.image ?? null}
+            provider={session.user.provider}
             urgentSubsCount={urgentSubsCount}
             notifications={notifications}
           />

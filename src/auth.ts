@@ -43,12 +43,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, account }) {
       if (user) token.id = user.id
+      // Remember how this session signed in, to badge the avatar.
+      if (account) token.provider = account.provider
       return token
     },
     session({ session, token }) {
       if (token.id) session.user.id = token.id as string
+      if (token.provider) session.user.provider = token.provider as string
       return session
     },
   },

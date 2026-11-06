@@ -2,6 +2,7 @@
 import { useActionState, useState, useTransition } from "react"
 import { api } from "@/lib/api/client"
 import { useSession } from "next-auth/react"
+import ProviderBadge, { PROVIDER_LABEL } from "@/components/ProviderBadge"
 
 type Account = { id: string; name: string }
 
@@ -105,7 +106,10 @@ export default function ProfileClient({
       {/* Avatar */}
       <div className={`${card} flex items-center gap-4`}>
         {user?.image ? (
-          <img src={user.image} alt="" className="w-16 h-16 rounded-full" />
+          <div className="relative flex-shrink-0">
+            <img src={user.image} alt="" className="w-16 h-16 rounded-full" />
+            <ProviderBadge provider={user.provider} size={24} ringClass="ring-white dark:ring-[#1c1c1e]" />
+          </div>
         ) : (
           <div className="w-16 h-16 rounded-full bg-[#1d1d1f] dark:bg-white flex items-center justify-center text-white dark:text-[#1d1d1f] text-2xl font-semibold flex-shrink-0">
             {initial}
@@ -114,11 +118,15 @@ export default function ProfileClient({
         <div>
           <p className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">{user?.name ?? "—"}</p>
           <p className="text-[13px] text-[#86868b] mt-0.5">{user?.email}</p>
-          {user?.image && (
+          {(user?.provider === "google" || user?.provider === "github") ? (
+            <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-[#86868b] bg-[#f5f5f7] dark:bg-white/[0.06] px-2 py-0.5 rounded-md">
+              Sesión iniciada con {PROVIDER_LABEL[user.provider]}
+            </span>
+          ) : user?.image ? (
             <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-[#86868b] bg-[#f5f5f7] dark:bg-white/[0.06] px-2 py-0.5 rounded-md">
               Cuenta social
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 

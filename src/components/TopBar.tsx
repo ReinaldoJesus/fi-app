@@ -5,6 +5,7 @@ import { useTheme } from "next-themes"
 import { useEffect, useRef, useState } from "react"
 import { logout } from "@/app/actions/auth"
 import SubmitOverlay from "@/components/SubmitOverlay"
+import ProviderBadge from "@/components/ProviderBadge"
 import { api } from "@/lib/api/client"
 import { useBalanceVisibility } from "@/contexts/BalanceVisibility"
 import BrandMark from "@/components/BrandMark"
@@ -15,6 +16,7 @@ type Props = {
   userName: string | null
   userEmail: string | null
   userImage: string | null
+  provider?: string
   urgentSubsCount: number
   notifications: AppNotification[]
 }
@@ -228,7 +230,7 @@ function MobileMenu({ open, onClose, urgentSubsCount }: { open: boolean; onClose
   )
 }
 
-export default function TopBar({ userName, userEmail, userImage, urgentSubsCount, notifications }: Props) {
+export default function TopBar({ userName, userEmail, userImage, provider, urgentSubsCount, notifications }: Props) {
   const pathname = usePathname()
   const { visible, toggle } = useBalanceVisibility()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -276,11 +278,12 @@ export default function TopBar({ userName, userEmail, userImage, urgentSubsCount
               <AnimatedEye visible={visible} />
             </button>
             <NotificationBell notifications={notifications} />
-            <Link href="/dashboard/profile" title="Perfil" className="ml-1">
+            <Link href="/dashboard/profile" title="Perfil" className="ml-1 relative">
               {userImage
                 ? <img src={userImage} alt="" className="w-9 h-9 rounded-full ring-2 ring-white dark:ring-black" />
                 : <div className="w-9 h-9 rounded-full bg-[#1d1d1f] dark:bg-white flex items-center justify-center text-white dark:text-[#1d1d1f] text-[13px] font-semibold">{initial}</div>
               }
+              <ProviderBadge provider={provider} />
             </Link>
           </div>
         </div>

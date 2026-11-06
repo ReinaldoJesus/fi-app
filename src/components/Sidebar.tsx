@@ -5,6 +5,7 @@ import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { logout } from "@/app/actions/auth"
 import SubmitOverlay from "@/components/SubmitOverlay"
+import ProviderBadge from "@/components/ProviderBadge"
 import { api } from "@/lib/api/client"
 import BrandMark from "@/components/BrandMark"
 import { NAV, NAV_SECTIONS, isNavActive, SunIcon, MoonIcon, AutoIcon } from "@/components/nav"
@@ -13,11 +14,12 @@ type Props = {
   userName: string | null
   userEmail: string | null
   userImage: string | null
+  provider?: string
   urgentSubsCount: number
   dbTheme: string
 }
 
-export default function Sidebar({ userName, userEmail, userImage, urgentSubsCount, dbTheme }: Props) {
+export default function Sidebar({ userName, userEmail, userImage, provider, urgentSubsCount, dbTheme }: Props) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -57,10 +59,13 @@ export default function Sidebar({ userName, userEmail, userImage, urgentSubsCoun
         <div className="px-4 pt-5 pb-2">
           <Link href="/dashboard/profile"
             className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.06] transition-colors">
-            {userImage
-              ? <img src={userImage} alt="" className="w-9 h-9 rounded-full" />
-              : <div className="w-9 h-9 rounded-full bg-[#007aff] flex items-center justify-center text-[13px] font-semibold">{initial}</div>
-            }
+            <div className="relative flex-shrink-0">
+              {userImage
+                ? <img src={userImage} alt="" className="w-9 h-9 rounded-full" />
+                : <div className="w-9 h-9 rounded-full bg-[#007aff] flex items-center justify-center text-[13px] font-semibold">{initial}</div>
+              }
+              <ProviderBadge provider={provider} ringClass="ring-[#29292b] dark:ring-[#1d1d1d]" />
+            </div>
             <div className="min-w-0">
               <p className="text-[13px] font-semibold truncate">{userName ?? "Mi cuenta"}</p>
               <p className="text-[11px] text-white/45 truncate">{userEmail}</p>
