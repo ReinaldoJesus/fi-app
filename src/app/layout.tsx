@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist } from "next/font/google"
 import "./globals.css"
 import ThemeProvider from "@/components/ThemeProvider"
+import { GlobalErrorListener } from "@/components/ErrorView"
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${geist.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full">
         <ThemeProvider>{children}</ThemeProvider>
+        <GlobalErrorListener />
       </body>
     </html>
   )

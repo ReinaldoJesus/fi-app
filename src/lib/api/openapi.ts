@@ -35,6 +35,9 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/auth/password-reset/confirm": {
     post: { tag: "Auth", summary: "Fija la nueva contraseña con el token del email", body: S.PasswordResetConfirm, public: true },
   },
+  "/errors": {
+    post: { tag: "Operación", summary: "Reporta un error ocurrido en el navegador", body: S.ClientErrorReport, status: 202, public: true },
+  },
   "/accounts": {
     get: { tag: "Cuentas", summary: "Lista cuentas y tarjetas" },
     post: { tag: "Cuentas", summary: "Crea una cuenta o tarjeta", body: S.AccountCreate, status: 201 },

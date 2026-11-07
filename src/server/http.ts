@@ -3,6 +3,7 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
 import { ApiError, unauthorized } from "./errors"
+import { reportError } from "./services/monitoring"
 
 /**
  * Response envelope for /api/v1:
@@ -33,6 +34,23 @@ function toApiError(err: unknown): ApiError {
   const e = err as { message?: string; error?: unknown; stack?: string }
   console.error("[api] unhandled error", e?.message ?? "", e?.error ?? "", e?.stack ?? err)
   return new ApiError(500, "internal_error", "Error interno del servidor")
+}
+
+/** Maps any thrown value to the error envelope, recording unexpected (500) failures. */
+async function handleError(err: unknown, req: Request, userId?: string) {
+  const apiErr = toApiError(err)
+  if (apiErr.status >= 500) {
+    const e = err as { message?: string; stack?: string }
+    await reportError({
+      source: "api",
+      message: `${req.method} ${new URL(req.url).pathname}: ${e?.message ?? String(err)}`,
+      stack: e?.stack,
+      path: new URL(req.url).pathname,
+      userId,
+      userAgent: req.headers.get("user-agent"),
+    })
+  }
+  return fail(apiErr)
 }
 
 export async function requireUserId(): Promise<string> {
@@ -67,14 +85,15 @@ type Handler<P> = (args: { req: Request; userId: string; params: P }) => Promise
  */
 export function withUser<P = Record<string, never>>(handler: Handler<P>) {
   return async (req: Request, ctx: Ctx<P>): Promise<Response> => {
+    let userId: string | undefined
     try {
-      const userId = await requireUserId()
+      userId = await requireUserId()
       const params = (await ctx.params) ?? ({} as P)
       const res = await handler({ req, userId, params })
       if (req.method !== "GET" && res.ok) revalidatePath("/dashboard", "layout")
       return res
     } catch (err) {
-      return fail(toApiError(err))
+      return handleError(err, req, userId)
     }
   }
 }
@@ -85,7 +104,7 @@ export function withPublic(handler: (args: { req: Request }) => Promise<Response
     try {
       return await handler({ req })
     } catch (err) {
-      return fail(toApiError(err))
+      return handleError(err, req)
     }
   }
 }

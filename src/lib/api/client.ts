@@ -77,6 +77,9 @@ export const api = {
     resetPassword: (body: In<typeof S.PasswordResetConfirm> | FormData) =>
       post<{ reset: true; email: string }>("/auth/password-reset/confirm", body as Body),
   },
+  errors: {
+    report: (body: In<typeof S.ClientErrorReport>) => post<{ recorded: true }>("/errors", body),
+  },
   accounts: {
     list: () => get("/accounts"),
     create: (body: In<typeof S.AccountCreate> | FormData) => post<WithId>("/accounts", body as Body),
