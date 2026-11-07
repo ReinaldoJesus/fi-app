@@ -6,10 +6,11 @@
  * POST /api/v1/auth/register.
  */
 import { signIn, signOut } from "@/auth"
-import { AuthError } from "next-auth"
+import { AuthError, CredentialsSignin } from "next-auth"
 import { Register } from "@/lib/api/schemas"
 import { registerUser } from "@/server/services/profile"
 import { ApiError } from "@/server/errors"
+import { clientIp } from "@/server/rateLimit"
 
 type SignupState = { errors?: Record<string, string[] | undefined>; message?: string } | undefined
 
@@ -21,6 +22,9 @@ export async function loginWithCredentials(_prev: { error: string } | undefined,
       redirectTo: "/dashboard",
     })
   } catch (error) {
+    if (error instanceof CredentialsSignin && error.code === "rate_limited") {
+      return { error: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo, o recupera tu contraseña." }
+    }
     if (error instanceof AuthError) return { error: "Email o contraseña incorrectos" }
     throw error
   }
@@ -35,7 +39,7 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   }
 
   try {
-    await registerUser(parsed.data)
+    await registerUser(parsed.data, { ip: await clientIp() })
   } catch (err) {
     if (err instanceof ApiError) return { errors: err.fields, message: err.fields ? undefined : err.message }
     throw err

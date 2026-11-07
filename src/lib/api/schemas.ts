@@ -230,6 +230,7 @@ export const ProfileUpdate = z.object({
   budgetCarryOver: bool.optional(),
   notifSubscriptions: bool.optional(),
   notifInactivity: bool.optional(),
+  notifBudget: bool.optional(),
   hideAmountsOnStart: bool.optional(),
   defaultAccountId: optionalId(),
 })
@@ -239,15 +240,18 @@ export const PasswordChange = z.object({
   newPassword: z.string().min(8, "La nueva contraseña debe tener mínimo 8 caracteres"),
 })
 
+const email = z.string().trim().toLowerCase().pipe(z.email("Email inválido"))
+const strongPassword = z
+  .string()
+  .min(8, "Mínimo 8 caracteres")
+  .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
+  .regex(/[0-9]/, "Debe contener al menos un número")
+
 export const Register = z
   .object({
     name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres"),
-    email: z.string().trim().toLowerCase().pipe(z.email("Email inválido")),
-    password: z
-      .string()
-      .min(8, "Mínimo 8 caracteres")
-      .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
-      .regex(/[0-9]/, "Debe contener al menos un número"),
+    email,
+    password: strongPassword,
     confirmPassword: z.string().optional(),
   })
   .refine(d => d.confirmPassword === undefined || d.password === d.confirmPassword, {
@@ -260,3 +264,17 @@ export const AnalyticsQuery = z.object({ months: z.coerce.number().int().min(3).
 export type AccountCreateInput = z.infer<typeof AccountCreate>
 export type TransactionCreateInput = z.infer<typeof TransactionCreate>
 export type TransferCreateInput = z.infer<typeof TransferCreate>
+
+// ── Password reset ─────────────────────────────────────────────────────────
+export const PasswordResetRequest = z.object({ email })
+
+export const PasswordResetConfirm = z
+  .object({
+    token: z.string().min(20, "Enlace inválido"),
+    password: strongPassword,
+    confirmPassword: z.string().optional(),
+  })
+  .refine(d => d.confirmPassword === undefined || d.password === d.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  })

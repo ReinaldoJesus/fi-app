@@ -26,6 +26,13 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/auth/register": {
     post: { tag: "Auth", summary: "Crea una cuenta con email y contraseña", body: S.Register, status: 201, public: true },
   },
+  "/auth/password-reset": {
+    post: { tag: "Auth", summary: "Envía un enlace para restablecer la contraseña (responde igual exista o no el email)", body: S.PasswordResetRequest, status: 202, public: true },
+    get: { tag: "Auth", summary: "Indica si un enlace de restablecimiento sigue vigente", query: z.object({ token: z.string() }), public: true },
+  },
+  "/auth/password-reset/confirm": {
+    post: { tag: "Auth", summary: "Fija la nueva contraseña con el token del email", body: S.PasswordResetConfirm, public: true },
+  },
   "/accounts": {
     get: { tag: "Cuentas", summary: "Lista cuentas y tarjetas" },
     post: { tag: "Cuentas", summary: "Crea una cuenta o tarjeta", body: S.AccountCreate, status: 201 },

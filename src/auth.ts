@@ -5,6 +5,13 @@ import GitHub from "next-auth/providers/github"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { CredentialsSignin } from "next-auth"
+import { clientIp, hit, resetRateLimit, RULES } from "@/server/rateLimit"
+
+/** Raised by authorize() when an account or connection is over its login attempts. */
+export class TooManyAttempts extends CredentialsSignin {
+  code = "rate_limited"
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,6 +25,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Brute-force protection: per account and per connection.
+        const emailKey = `login:email:${String(credentials.email).trim().toLowerCase()}`
+        const [byIp, byEmail] = await Promise.all([
+          hit(`login:ip:${await clientIp()}`, RULES.loginIp),
+          hit(emailKey, RULES.loginEmail),
+        ])
+        if (!byIp.allowed || !byEmail.allowed) throw new TooManyAttempts()
+
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         })
@@ -28,6 +43,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           credentials.password as string,
           user.password
         )
+        if (valid) await resetRateLimit(emailKey)
 
         return valid ? user : null
       },

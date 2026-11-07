@@ -24,7 +24,7 @@ export default function SignupPage() {
           {pending && <LoadingScreen overlay label="Creando tu cuenta…" />}
 
           {state?.message && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-[#ff3b30]/08 border border-[#ff3b30]/20 text-[#ff3b30] text-[13px]">
+            <div className="mb-4 px-4 py-3 rounded-xl bg-[#ff3b30]/[0.08] border border-[#ff3b30]/20 text-[#ff3b30] text-[13px]">
               {state.message}
             </div>
           )}

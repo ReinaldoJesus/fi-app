@@ -20,6 +20,7 @@ model User {
   budgetCarryOver    Boolean  @default(false)
   notifSubscriptions Boolean  @default(true)
   notifInactivity    Boolean  @default(true)
+  notifBudget        Boolean  @default(true)
   hideAmountsOnStart Boolean  @default(false)
   defaultAccountId   String?
   createdAt          DateTime @default(now())
@@ -34,6 +35,9 @@ model User {
   subscriptions          Subscription[]
   savingsGoals           SavingsGoal[]
   recurringTransactions  RecurringTransaction[]
+  passwordResetTokens    PasswordResetToken[]
+  pushSubscriptions      PushSubscription[]
+  notificationDeliveries NotificationDelivery[]
 }
 
 model Account {
@@ -147,6 +151,7 @@ model Transaction {
   account   FinAccount  @relation("FromAccount", fields: [accountId], references: [id], onDelete: Cascade)
   toAccount FinAccount? @relation("ToAccount", fields: [toAccountId], references: [id])
   category  Category?   @relation(fields: [categoryId], references: [id])
+  receipt   Receipt?
 
   @@index([userId, date])
   @@index([userId, type])
@@ -226,4 +231,96 @@ model RecurringTransaction {
   category Category?  @relation(fields: [categoryId], references: [id])
 
   @@map("recurring_transactions")
+}
+
+// ─── Cuenta y seguridad ──────────────────────────────────────────────────────
+
+/// One-time password reset link. Only the SHA-256 of the token is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Fixed-window counters for brute-force protection (login, signup, resets).
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@map("rate_limits")
+}
+
+// ─── Notificaciones ──────────────────────────────────────────────────────────
+
+/// A browser/device subscribed to Web Push for this user.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+/// Dedupe log so each alert (e.g. "Netflix se cobra mañana, nov 2026") is sent once.
+model NotificationDelivery {
+  id     String   @id @default(cuid())
+  userId String
+  key    String
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("notification_deliveries")
+}
+
+// ─── Operación ───────────────────────────────────────────────────────────────
+
+/// Errors reported by the server (onRequestError, API 500s) and the browser.
+model ErrorLog {
+  id        String   @id @default(cuid())
+  source    String
+  message   String   @db.Text
+  stack     String?  @db.Text
+  path      String?
+  digest    String?
+  userId    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("error_logs")
+}
+
+// ─── Boletas ─────────────────────────────────────────────────────────────────
+
+/// Receipt photo attached to a movement. Images are resized in the browser
+/// before upload (~200 KB), so storing them in Postgres is fine for the pilot.
+model Receipt {
+  id            String   @id @default(cuid())
+  transactionId String   @unique
+  mimeType      String
+  size          Int
+  data          Bytes
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("receipts")
 }

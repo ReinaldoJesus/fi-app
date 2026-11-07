@@ -69,6 +69,10 @@ export const api = {
   },
   auth: {
     register: (body: In<typeof S.Register> | FormData) => post<{ id: string; email: string }>("/auth/register", body as Body),
+    requestPasswordReset: (body: In<typeof S.PasswordResetRequest> | FormData) => post<{ sent: true }>("/auth/password-reset", body as Body),
+    checkResetToken: (token: string) => get<{ valid: boolean }>(`/auth/password-reset${qs({ token })}`),
+    resetPassword: (body: In<typeof S.PasswordResetConfirm> | FormData) =>
+      post<{ reset: true; email: string }>("/auth/password-reset/confirm", body as Body),
   },
   accounts: {
     list: () => get("/accounts"),
