@@ -76,6 +76,7 @@ type WithId = { id: string }
 export type TransactionSuggestions = {
   suggestions: { description: string; type: "INCOME" | "EXPENSE"; count: number; categoryId: string | null; accountId: string; amount: number }[]
   topCategory: { INCOME: string | null; EXPENSE: string | null }
+  topAccount: string | null
 }
 
 export type StatementPreview = {
@@ -157,6 +158,7 @@ export const api = {
     month: (month?: number, year?: number) => get(`/budgets${qs({ month, year })}`),
     set: (body: In<typeof S.BudgetUpsert>) => put("/budgets", body),
     copyPrevious: (month: number, year: number) => post<{ copied: number }>("/budgets/copy-previous", { month, year }),
+    applySuggested: (month: number, year: number) => post<{ applied: number }>("/budgets/apply-suggested", { month, year }),
   },
   savingsGoals: {
     list: () => get("/savings-goals"),

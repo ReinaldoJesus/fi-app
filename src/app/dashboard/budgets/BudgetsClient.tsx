@@ -7,10 +7,12 @@ type Cat = { id: string; name: string; color: string; icon: string | null }
 
 const fmt = (n: number) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n)
 
-export default function BudgetsClient({ categories, spent, budgetMap, month, year }: {
+export default function BudgetsClient({ categories, spent, budgetMap, suggested, month, year }: {
   categories: Cat[]
   spent: Record<string, number>
   budgetMap: Record<string, number>
+  /** Average spent per category over the previous 3 months (smart default). */
+  suggested: Record<string, number>
   month: number
   year: number
 }) {
@@ -30,6 +32,18 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
   function navigate(delta: number) {
     const d = new Date(year, month - 1 + delta, 1)
     router.push(`/dashboard/budgets?month=${d.getMonth() + 1}&year=${d.getFullYear()}`)
+  }
+
+  const pendingSuggestions = categories.filter(c => !budgetMap[c.id] && suggested[c.id])
+  const [applying, setApplying] = useState(false)
+
+  async function applySuggested() {
+    setApplying(true)
+    setCopyError("")
+    const r = await api.budgets.applySuggested(month, year)
+    setApplying(false)
+    if (r.error) { setCopyError(r.error); return }
+    router.refresh()
   }
 
   function save(catId: string) {
@@ -114,6 +128,24 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
         </div>
       )}
 
+      {/* Smart default: one tap sets every empty category to what you usually spend */}
+      {pendingSuggestions.length > 0 && (
+        <div className="mb-5 p-4 bg-[#007aff]/[0.06] rounded-2xl border border-[#007aff]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white">
+              {pendingSuggestions.length === 1 ? "1 categoría sin presupuesto" : `${pendingSuggestions.length} categorías sin presupuesto`}
+            </p>
+            <p className="text-[11px] text-[#86868b] mt-0.5">
+              Usa tu gasto promedio de los últimos 3 meses ({fmt(pendingSuggestions.reduce((s, c) => s + suggested[c.id], 0))} en total). Después puedes ajustar cada uno.
+            </p>
+          </div>
+          <button onClick={applySuggested} disabled={applying}
+            className="flex-shrink-0 px-3.5 py-2 rounded-xl bg-[#007aff] text-white text-[12px] font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap">
+            {applying ? "Aplicando..." : "Usar mis promedios"}
+          </button>
+        </div>
+      )}
+
       <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-3">Por categoría</p>
       <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
         {categories.map(cat => {
@@ -132,6 +164,9 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-[#1d1d1f] dark:text-white">{cat.name}</p>
                   <p className="text-[11px] text-[#86868b]">{fmt(catSpent)} gastado{budget > 0 ? ` de ${fmt(budget)}` : ""}</p>
+                  {isEditing && suggested[cat.id] > 0 && (
+                    <p className="text-[11px] text-[#007aff]">Tu promedio de los últimos 3 meses: {fmt(suggested[cat.id])}</p>
+                  )}
                 </div>
                 {isEditing ? (
                   <div className="flex items-center gap-2">
@@ -143,7 +178,7 @@ export default function BudgetsClient({ categories, spent, budgetMap, month, yea
                     <button onClick={() => setEditing(null)} className="text-[#86868b] text-[13px]">✕</button>
                   </div>
                 ) : (
-                  <button onClick={() => { setEditing(cat.id); setInputVal(budget > 0 ? String(budget) : "") }}
+                  <button onClick={() => { setEditing(cat.id); setInputVal(budget > 0 ? String(budget) : suggested[cat.id] ? String(suggested[cat.id]) : "") }}
                     className="text-[12px] text-[#007aff] font-medium hover:opacity-70 transition-opacity">
                     {budget > 0 ? "Editar" : "Fijar"}
                   </button>

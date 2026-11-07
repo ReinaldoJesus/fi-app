@@ -85,6 +85,7 @@ export async function getBudgetMonth(userId: string, month: number, year: number
     spent[tx.categoryId] = (spent[tx.categoryId] ?? 0) + num(tx.amount)
   }
   const budgetMap: Record<string, number> = Object.fromEntries(budgets.map(b => [b.categoryId, num(b.amount)]))
+  const suggested = await suggestedBudgets(userId, month, year)
 
   return {
     month,
@@ -92,6 +93,7 @@ export async function getBudgetMonth(userId: string, month: number, year: number
     categories,
     spent,
     budgetMap,
+    suggested,
     items: categories.map(c => ({
       categoryId: c.id,
       name: c.name,
@@ -99,6 +101,48 @@ export async function getBudgetMonth(userId: string, month: number, year: number
       color: c.color,
       budget: budgetMap[c.id] ?? 0,
       spent: spent[c.id] ?? 0,
+      suggested: suggested[c.id] ?? 0,
     })),
   }
+}
+
+const SUGGESTION_MONTHS = 3
+
+/**
+ * Smart default for each expense category: the average spent over the previous
+ * three months, rounded up to the next $1.000. Categories without spending are left out.
+ */
+export async function suggestedBudgets(userId: string, month: number, year: number): Promise<Record<string, number>> {
+  const from = new Date(Date.UTC(year, month - 1 - SUGGESTION_MONTHS, 1))
+  const to = new Date(Date.UTC(year, month - 1, 1))
+  const rows = await prisma.transaction.groupBy({
+    by: ["categoryId"],
+    where: { userId, type: "EXPENSE", categoryId: { not: null }, date: { gte: from, lt: to } },
+    _sum: { amount: true },
+  })
+  const out: Record<string, number> = {}
+  for (const r of rows) {
+    const avg = num(r._sum.amount ?? 0) / SUGGESTION_MONTHS
+    if (r.categoryId && avg > 0) out[r.categoryId] = Math.ceil(avg / 1000) * 1000
+  }
+  return out
+}
+
+/** Sets the suggested amount on every category of the month that has no budget yet. */
+export async function applySuggestedBudgets(userId: string, month: number, year: number) {
+  const [suggested, existing] = await Promise.all([
+    suggestedBudgets(userId, month, year),
+    prisma.budget.findMany({ where: { userId, month, year }, select: { categoryId: true } }),
+  ])
+  const taken = new Set(existing.map(b => b.categoryId))
+  const ownCategories = await prisma.category.findMany({
+    where: { userId, type: "EXPENSE", id: { in: Object.keys(suggested) } },
+    select: { id: true },
+  })
+  const data = ownCategories
+    .filter(c => !taken.has(c.id))
+    .map(c => ({ userId, categoryId: c.id, amount: suggested[c.id], month, year }))
+  if (!data.length) throw new ApiError(404, "not_found", "No hay promedios para sugerir: registra gastos con categoría por un par de meses.")
+  const res = await prisma.budget.createMany({ data, skipDuplicates: true })
+  return { applied: res.count }
 }

@@ -9,7 +9,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
   const now = new Date()
   const month = Math.min(12, Math.max(1, parseInt(params.month ?? "") || now.getMonth() + 1))
   const year = parseInt(params.year ?? "") || now.getFullYear()
-  const { categories, spent, budgetMap } = await getBudgetMonth(userId, month, year)
+  const { categories, spent, budgetMap, suggested } = await getBudgetMonth(userId, month, year)
 
   return (
     <div className="max-w-2xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
@@ -17,6 +17,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
         categories={categories}
         spent={spent}
         budgetMap={budgetMap}
+        suggested={suggested}
         month={month}
         year={year}
       />

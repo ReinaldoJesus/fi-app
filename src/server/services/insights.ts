@@ -22,9 +22,11 @@ export async function getTransactionSuggestions(userId: string) {
   type Agg = { description: string; type: "INCOME" | "EXPENSE"; count: number; categoryId: string | null; accountId: string; amount: number }
   const byDescription = new Map<string, Agg>()
   const categoryCount = { INCOME: new Map<string, number>(), EXPENSE: new Map<string, number>() }
+  const accountCount = new Map<string, number>()
 
   for (const r of rows) {
     const type = r.type as "INCOME" | "EXPENSE"
+    accountCount.set(r.accountId, (accountCount.get(r.accountId) ?? 0) + 1)
     if (r.categoryId) categoryCount[type].set(r.categoryId, (categoryCount[type].get(r.categoryId) ?? 0) + 1)
     const description = r.description?.trim()
     if (!description) continue
@@ -43,6 +45,7 @@ export async function getTransactionSuggestions(userId: string) {
   return {
     suggestions: [...byDescription.values()].sort((a, b) => b.count - a.count).slice(0, MAX_SUGGESTIONS),
     topCategory: { INCOME: top(categoryCount.INCOME), EXPENSE: top(categoryCount.EXPENSE) },
+    topAccount: top(accountCount),
   }
 }
 

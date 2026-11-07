@@ -31,6 +31,8 @@ export default function NewTransactionButton({
   const [description, setDescription] = useState("")
   const [hints, setHints] = useState<TransactionSuggestions | null>(null)
   const [formKey, setFormKey] = useState(0)
+  const [accountId, setAccountId] = useState("")
+  const [showNotes, setShowNotes] = useState(false)
   const today = new Date().toLocaleDateString("en-CA")
 
   const budgetInfo = type === "EXPENSE" && selectedCategoryId && budgetStatus?.[selectedCategoryId]
@@ -43,12 +45,20 @@ export default function NewTransactionButton({
     return id && categories.some(c => c.id === id && c.type === t) ? id : ""
   }
 
+  /** Smart default: the account set in the profile, else the one used most, else the first. */
+  function defaultAccount(h: TransactionSuggestions | null) {
+    const known = (id?: string | null) => (id && accounts.some(a => a.id === id) ? id : null)
+    return known(defaultAccountId) ?? known(h?.topAccount) ?? accounts[0]?.id ?? ""
+  }
+
   function openDialog(t: "INCOME" | "EXPENSE") {
     setType(t)
     setAmount("")
     setDescription("")
     setCategoryTouched(false)
+    setShowNotes(false)
     setSelectedCategoryId(defaultCategory(t, hints))
+    setAccountId(defaultAccount(hints))
     setFormKey(k => k + 1)
     dialogRef.current?.showModal()
     if (!hints) {
@@ -57,6 +67,7 @@ export default function NewTransactionButton({
         setHints(r.data)
         // Only fill the category if the user hasn't picked one meanwhile.
         setSelectedCategoryId(cur => cur || defaultCategory(t, r.data))
+        if (!defaultAccountId) setAccountId(defaultAccount(r.data))
       })
     }
   }
@@ -148,15 +159,22 @@ export default function NewTransactionButton({
               </datalist>
             </div>
 
-            <div><label className={labelCls}>Notas (opcional)</label>
-              <textarea name="notes" placeholder="Detalles adicionales..." rows={2}
-                className={inputCls + " resize-none"} /></div>
+            {showNotes ? (
+              <div><label className={labelCls}>Notas (opcional)</label>
+                <textarea name="notes" placeholder="Detalles adicionales..." rows={2} autoFocus
+                  className={inputCls + " resize-none"} /></div>
+            ) : (
+              <button type="button" onClick={() => setShowNotes(true)}
+                className="text-[12px] font-medium text-[#007aff] hover:opacity-70 transition-opacity">
+                + Agregar nota
+              </button>
+            )}
 
             <div><label className={labelCls}>Fecha</label>
               <input name="date" type="date" defaultValue={today} required className={inputCls} /></div>
 
             <div><label className={labelCls}>Cuenta</label>
-              <select name="accountId" required defaultValue={defaultAccountId ?? undefined} className={inputCls}>
+              <select name="accountId" required value={accountId} onChange={e => setAccountId(e.target.value)} className={inputCls}>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select></div>
 
@@ -195,7 +213,7 @@ export default function NewTransactionButton({
               </button>
               <button type="submit" disabled={pending}
                 className="flex-1 py-2.5 rounded-xl bg-[#1d1d1f] dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-[#1d1d1f] font-semibold text-[13px] transition-all">
-                {pending ? "Guardando..." : "Guardar"}
+                {pending ? "Guardando..." : typed > 0 ? `Guardar ${type === "INCOME" ? "ingreso" : "gasto"} de ${fmt(typed)}` : "Guardar"}
               </button>
             </div>
           </form>

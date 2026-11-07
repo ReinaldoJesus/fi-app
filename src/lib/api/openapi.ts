@@ -112,6 +112,9 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/budgets/copy-previous": {
     post: { tag: "Presupuestos", summary: "Copia los presupuestos del último mes que tenga", body: S.BudgetCopy },
   },
+  "/budgets/apply-suggested": {
+    post: { tag: "Presupuestos", summary: "Fija en cada categoría sin presupuesto su gasto promedio de los últimos 3 meses", body: S.BudgetCopy },
+  },
   "/savings-goals": {
     get: { tag: "Metas", summary: "Lista metas de ahorro" },
     post: { tag: "Metas", summary: "Crea una meta", body: S.SavingsGoalCreate, status: 201 },

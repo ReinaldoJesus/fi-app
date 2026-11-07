@@ -52,6 +52,17 @@ const KNOWN: Record<string, string> = {
   audible: "🎧", "kindle unlimited": "📚",
 }
 
+/** Most common services: one tap fills name, icon and category. */
+const POPULAR: { name: string; icon: string; category: string }[] = [
+  { name: "Netflix", icon: "🎬", category: "streaming" },
+  { name: "Spotify", icon: "🎵", category: "musica" },
+  { name: "Disney+", icon: "🏰", category: "streaming" },
+  { name: "YouTube Premium", icon: "▶️", category: "streaming" },
+  { name: "iCloud", icon: "☁️", category: "cloud" },
+  { name: "Gimnasio", icon: "💪", category: "fitness" },
+  { name: "ChatGPT", icon: "🤖", category: "productividad" },
+]
+
 const QUICK_EMOJIS = ["🎬","🎵","💪","🎮","☁️","💼","📺","🎨","📝","🏠","🚗","✈️","🍔","🐾","📚","🎧","🔐","⚽","🤖","▶️","🏰","🎌","📰","🛒"]
 
 function suggestIcon(name: string): string | null {
@@ -97,12 +108,37 @@ function SubForm({
 }) {
   const [name, setName] = useState(initial?.name ?? "")
   const [icon, setIcon] = useState(initial?.icon ?? "")
+  const [category, setCategory] = useState(initial?.category ?? "otro")
   const suggested = suggestIcon(name)
+
+  function pick(p: (typeof POPULAR)[number]) {
+    setName(p.name)
+    setIcon(p.icon)
+    setCategory(p.category)
+  }
 
   return (
     <form action={action} className="space-y-4">
       {error && (
         <p className="text-[13px] text-[#ff3b30] bg-[#ff3b30]/10 border border-[#ff3b30]/20 px-3 py-2 rounded-xl">{error}</p>
+      )}
+
+      {!initial && (
+        <div>
+          <label className={labelCls}>Populares</label>
+          <div className="flex flex-wrap gap-1.5">
+            {POPULAR.map(p => (
+              <button key={p.name} type="button" onClick={() => pick(p)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  name === p.name
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+                <span>{p.icon}</span>{p.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Name with icon suggestion */}
@@ -149,13 +185,13 @@ function SubForm({
       <div>
         <label className={labelCls}>Día de cobro mensual</label>
         <input name="billingDay" type="number" min="1" max="31" required placeholder="Ej: 5, 15, 28"
-          defaultValue={initial?.billingDay ?? ""} className={inputCls} />
+          defaultValue={initial?.billingDay ?? new Date().getDate()} suppressHydrationWarning className={inputCls} />
         <p className="text-[11px] text-[#86868b] mt-1.5">El día del mes en que se realiza el cobro</p>
       </div>
 
       <div>
         <label className={labelCls}>Categoría</label>
-        <select name="category" defaultValue={initial?.category ?? "otro"} className={inputCls}>
+        <select name="category" value={category} onChange={e => setCategory(e.target.value)} className={inputCls}>
           {CATEGORIES.map(c => (
             <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
           ))}
