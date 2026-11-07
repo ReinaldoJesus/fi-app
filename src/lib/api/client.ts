@@ -66,6 +66,9 @@ export const api = {
     get: () => get("/me"),
     update: (body: In<typeof S.ProfileUpdate> | FormData) => patch("/me", body as Body),
     changePassword: (body: In<typeof S.PasswordChange>) => post<{ changed: true }>("/me/password", body),
+    /** Direct download link (the browser handles the file). */
+    exportUrl: `${BASE}/me/export`,
+    remove: (body: In<typeof S.AccountDeletion>) => request<{ deleted: true }>("DELETE", "/me", body),
   },
   auth: {
     register: (body: In<typeof S.Register> | FormData) => post<{ id: string; email: string }>("/auth/register", body as Body),

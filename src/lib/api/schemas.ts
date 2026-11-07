@@ -278,3 +278,10 @@ export const PasswordResetConfirm = z
     message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   })
+
+// ── Privacy ────────────────────────────────────────────────────────────────
+export const AccountDeletion = z.object({
+  confirm: z.literal("ELIMINAR", "Escribe ELIMINAR para confirmar"),
+  /** Required when the account has a password. */
+  password: z.string().optional(),
+})

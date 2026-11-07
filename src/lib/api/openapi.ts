@@ -21,8 +21,10 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/me": {
     get: { tag: "Perfil", summary: "Perfil y preferencias de la persona autenticada" },
     patch: { tag: "Perfil", summary: "Actualiza nombre, tema o preferencias", body: S.ProfileUpdate },
+    delete: { tag: "Perfil", summary: "Elimina la cuenta y todos sus datos de forma permanente", body: S.AccountDeletion },
   },
   "/me/password": { post: { tag: "Perfil", summary: "Cambia la contraseña", body: S.PasswordChange } },
+  "/me/export": { get: { tag: "Perfil", summary: "Descarga todos tus datos en un archivo JSON (incluye boletas en base64)" } },
   "/auth/register": {
     post: { tag: "Auth", summary: "Crea una cuenta con email y contraseña", body: S.Register, status: 201, public: true },
   },

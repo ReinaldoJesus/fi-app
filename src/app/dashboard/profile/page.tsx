@@ -16,10 +16,12 @@ export default async function ProfilePage() {
         budgetCarryOver: user?.budgetCarryOver ?? false,
         notifSubscriptions: user?.notifSubscriptions ?? true,
         notifInactivity: user?.notifInactivity ?? true,
+        notifBudget: user?.notifBudget ?? true,
         hideAmountsOnStart: user?.hideAmountsOnStart ?? false,
         defaultAccountId: user?.defaultAccountId ?? null,
       }}
       accounts={accounts}
+      hasPassword={user.hasPassword}
     />
   )
 }
