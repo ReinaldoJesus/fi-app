@@ -10,6 +10,8 @@ export type ErrorReport = {
   digest?: string | null
   userId?: string | null
   userAgent?: string | null
+  /** false to record without emailing (automated tests). */
+  alert?: boolean
 }
 
 const ALERT_WINDOW_MS = 15 * 60 * 1000
@@ -34,9 +36,9 @@ export async function reportError(report: ErrorReport) {
     })
 
     const to = process.env.ALERT_EMAIL
-    if (!to) return
+    if (!to || report.alert === false) return
     const since = new Date(Date.now() - ALERT_WINDOW_MS)
-    const earlier = await prisma.errorLog.count({ where: { createdAt: { gte: since }, id: { not: row.id } } })
+    const earlier = await prisma.errorLog.count({ where: { createdAt: { gte: since }, id: { not: row.id }, NOT: { message: { startsWith: "[test]" } } } })
     if (earlier > 0) return // an alert already went out for this burst
 
     const last24h = await prisma.errorLog.count({ where: { createdAt: { gte: new Date(Date.now() - 86_400_000) } } })

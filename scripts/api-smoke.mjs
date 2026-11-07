@@ -173,6 +173,106 @@ check("wrong current password → 400", pw.status === 400, pw)
 const badJson = await fetch(`${BASE}/api/v1/accounts`, { method: "POST", headers: { cookie: cookieHeader(), "content-type": "application/json" }, body: "{oops" })
 check("malformed JSON → 400", badJson.status === 400)
 
+// ── Pilot features ──────────────────────────────────────────────────────────
+console.log("password reset")
+const rr1 = await call("POST", "/api/v1/auth/password-reset", { email: "nadie-existe@clarifi.test" })
+check("reset request for unknown email → 202 (no account enumeration)", rr1.status === 202 && rr1.data?.sent === true, rr1)
+const rr2 = await call("GET", "/api/v1/auth/password-reset?token=" + "x".repeat(43))
+check("reset link check: invalid token → valid false", rr2.status === 200 && rr2.data?.valid === false, rr2)
+const rr3 = await call("POST", "/api/v1/auth/password-reset/confirm", { token: "x".repeat(43), password: "Nueva12345" })
+check("reset confirm with bad token → 400", rr3.status === 400 && rr3.error?.code === "invalid_token", rr3)
+const rr4 = await call("POST", "/api/v1/auth/password-reset/confirm", { token: "x".repeat(43), password: "corta" })
+check("reset confirm with weak password → 422", rr4.status === 422 && rr4.error?.fields?.password, rr4)
+
+console.log("statement import")
+const csv = "Banco QA\nFecha;Detalle;Cargos;Abonos;Saldo\n01/10/2026;Saldo inicial;;;1000\n02/10/2026;QA Supermercado;12.990;;\n03/10/2026;QA Sueldo;;1.500.000;\n03/10/2026;QA Supermercado;12.990;;\n"
+const form = new FormData()
+form.set("file", new Blob([csv], { type: "text/csv" }), "cartola.csv")
+form.set("accountId", A.id)
+const prevRes = await fetch(`${BASE}/api/v1/transactions/import/preview`, { method: "POST", headers: { cookie: cookieHeader() }, body: form })
+const prev = { status: prevRes.status, ...(await prevRes.json()) }
+check("statement preview parses rows, skips saldo",
+  prev.status === 200 && prev.data.rows.length === 3 && prev.data.skipped === 1
+  && prev.data.rows[0].amount === 12990 && prev.data.rows[1].type === "INCOME" && prev.data.rows[1].amount === 1500000, prev)
+await call("POST", "/api/v1/transactions/import", { rows: [{ type: "EXPENSE", amount: 12990, date: "2026-10-02", accountId: A.id, description: "QA ya cargado" }] })
+const prevRes2 = await fetch(`${BASE}/api/v1/transactions/import/preview`, { method: "POST", headers: { cookie: cookieHeader() }, body: form })
+const prev2 = await prevRes2.json()
+check("statement preview flags movements already in the account", prev2.data?.duplicates === 1 && prev2.data.rows[0].duplicate === true && prev2.data.rows[2].duplicate === false, prev2)
+const badForm = new FormData()
+badForm.set("file", new Blob(["hola"], { type: "application/pdf" }), "cartola.pdf")
+const badPrev = await fetch(`${BASE}/api/v1/transactions/import/preview`, { method: "POST", headers: { cookie: cookieHeader() }, body: badForm })
+check("statement preview rejects unsupported formats → 400", badPrev.status === 400)
+
+console.log("receipts")
+// Smallest valid PNG (1×1).
+const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64")
+const rf = new FormData()
+rf.set("file", new Blob([png], { type: "image/png" }), "boleta.png")
+const up = await fetch(`${BASE}/api/v1/transactions/${t1.data.id}/receipt`, { method: "PUT", headers: { cookie: cookieHeader() }, body: rf })
+check("upload receipt", up.status === 200)
+const img = await fetch(`${BASE}/api/v1/transactions/${t1.data.id}/receipt`, { headers: { cookie: cookieHeader() } })
+check("download receipt (sniffed as PNG)", img.status === 200 && img.headers.get("content-type") === "image/png")
+const withReceipt = await call("GET", `/api/v1/transactions/${t1.data.id}`)
+check("transaction reports hasReceipt", withReceipt.data?.hasReceipt === true, withReceipt)
+const fake = new FormData()
+fake.set("file", new Blob(["<script>alert(1)</script>"], { type: "image/png" }), "boleta.png")
+const upFake = await fetch(`${BASE}/api/v1/transactions/${t1.data.id}/receipt`, { method: "PUT", headers: { cookie: cookieHeader() }, body: fake })
+check("non-image disguised as PNG → 400", upFake.status === 400)
+const rmR = await call("DELETE", `/api/v1/transactions/${t1.data.id}/receipt`)
+check("delete receipt", rmR.status === 200, rmR)
+
+console.log("push, errors, export")
+const ps = await call("GET", "/api/v1/push-subscriptions")
+check("push status", ps.status === 200 && typeof ps.data.configured === "boolean" && Array.isArray(ps.data.devices), ps)
+const badSub = await call("POST", "/api/v1/push-subscriptions", { endpoint: "not-a-url", keys: { p256dh: "x", auth: "y" } })
+check("invalid push subscription → 422", badSub.status === 422, badSub)
+const erRes = await fetch(`${BASE}/api/v1/errors`, {
+  method: "POST",
+  headers: { cookie: cookieHeader(), "content-type": "application/json", "x-clarifi-test": "1" },
+  body: JSON.stringify({ message: "QA smoke test: reporte de error de prueba", path: "/qa" }),
+})
+const er = { status: erRes.status, ...(await erRes.json()) }
+check("client error report → 202", er.status === 202, er)
+const job = await fetch(`${BASE}/api/v1/jobs/daily`)
+check("daily job without CRON_SECRET → 401", job.status === 401)
+const exp = await fetch(`${BASE}/api/v1/me/export`, { headers: { cookie: cookieHeader() } })
+const expJson = await exp.json()
+check("export my data (JSON download, no secrets)",
+  exp.status === 200 && /attachment/.test(exp.headers.get("content-disposition") ?? "")
+  && expJson.profile?.email === EMAIL && Array.isArray(expJson.transactions) && !JSON.stringify(expJson).includes("password\":"), { status: exp.status })
+
+console.log("account deletion (throwaway user)")
+const tmpEmail = `qa-delete-${Date.now()}@clarifi.test`
+const tmpJar = new Map()
+const tmpCookies = () => [...tmpJar].map(([k, v]) => `${k}=${v}`).join("; ")
+const tmpStore = res => { for (const c of res.headers.getSetCookie?.() ?? []) { const [p] = c.split(";"); const i = p.indexOf("="); tmpJar.set(p.slice(0, i), p.slice(i + 1)) } }
+await call("POST", "/api/v1/auth/register", { name: "QA Borrar", email: tmpEmail, password: "Borrar12345" })
+const c2 = await fetch(`${BASE}/api/auth/csrf`); tmpStore(c2)
+const { csrfToken: tok2 } = await c2.json()
+tmpStore(await fetch(`${BASE}/api/auth/callback/credentials`, {
+  method: "POST", redirect: "manual",
+  headers: { "content-type": "application/x-www-form-urlencoded", cookie: tmpCookies() },
+  body: new URLSearchParams({ email: tmpEmail, password: "Borrar12345", csrfToken: tok2, callbackUrl: `${BASE}/dashboard` }),
+}))
+const del = (body) => fetch(`${BASE}/api/v1/me`, { method: "DELETE", headers: { cookie: tmpCookies(), "content-type": "application/json" }, body: JSON.stringify(body) })
+const d1 = await del({ confirm: "ELIMINAR", password: "incorrecta" })
+check("delete account with wrong password → 400", d1.status === 400)
+const d2 = await del({ confirm: "borrar", password: "Borrar12345" })
+check("delete account without typing ELIMINAR → 422", d2.status === 422)
+const d3 = await del({ confirm: "ELIMINAR", password: "Borrar12345" })
+const reReg = await call("POST", "/api/v1/auth/register", { name: "QA Borrar", email: tmpEmail, password: "Borrar12345" })
+check("delete account removes the user (email can register again)", d3.status === 200 && reReg.status === 201, { d3: d3.status, reReg: reReg.status })
+// Remove the re-registered throwaway user too.
+tmpJar.clear()
+const c3 = await fetch(`${BASE}/api/auth/csrf`); tmpStore(c3)
+const { csrfToken: tok3 } = await c3.json()
+tmpStore(await fetch(`${BASE}/api/auth/callback/credentials`, {
+  method: "POST", redirect: "manual",
+  headers: { "content-type": "application/x-www-form-urlencoded", cookie: tmpCookies() },
+  body: new URLSearchParams({ email: tmpEmail, password: "Borrar12345", csrfToken: tok3, callbackUrl: `${BASE}/dashboard` }),
+}))
+await del({ confirm: "ELIMINAR", password: "Borrar12345" })
+
 // ── Cleanup of what this run created (the test user itself stays) ──────────
 for (const id of [A.id, B.id, C.data.id]) await call("DELETE", `/api/v1/accounts/${id}`)
 await call("DELETE", `/api/v1/savings-goals/${goal.data.id}`)

@@ -10,6 +10,15 @@ export const POST = withPublic(async ({ req }) => {
   await assertRateLimit(`client-error:ip:${await clientIp()}`, RULES.clientErrorIp, "reportes")
   const input = ClientErrorReport.parse(await readJson(req))
   const session = await auth().catch(() => null)
-  await reportError({ source: "client", ...input, userId: session?.user?.id, userAgent: req.headers.get("user-agent") })
+  // Automated tests mark their reports so they're stored without emailing an alert.
+  const isTest = req.headers.get("x-clarifi-test") === "1"
+  await reportError({
+    source: "client",
+    ...input,
+    message: isTest ? `[test] ${input.message}` : input.message,
+    userId: session?.user?.id,
+    userAgent: req.headers.get("user-agent"),
+    alert: !isTest,
+  })
   return ok({ recorded: true }, 202)
 })

@@ -13,7 +13,7 @@ export type RateRule = { limit: number; windowSec: number }
 export const RULES = {
   loginEmail: { limit: 8, windowSec: 15 * 60 },
   loginIp: { limit: 40, windowSec: 15 * 60 },
-  signupIp: { limit: 5, windowSec: 60 * 60 },
+  signupIp: { limit: 10, windowSec: 60 * 60 },
   resetEmail: { limit: 3, windowSec: 60 * 60 },
   resetIp: { limit: 10, windowSec: 60 * 60 },
   clientErrorIp: { limit: 30, windowSec: 60 * 60 },
