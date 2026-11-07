@@ -1,7 +1,8 @@
 "use client"
 import { useRef, useState, useTransition, useMemo, useActionState } from "react"
 import { useRouter } from "next/navigation"
-import { api } from "@/lib/api/client"
+import { api, type StatementPreview } from "@/lib/api/client"
+import { BrandLoader } from "@/components/BrandLoader"
 import NewTransactionButton from "../components/NewTransactionButton"
 import NewTransferButton from "../components/NewTransferButton"
 import ConfirmDialog from "@/components/ConfirmDialog"
@@ -21,20 +22,6 @@ type Recurring = {
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(n)
-
-function parseCSV(text: string): string[][] {
-  return text.trim().split("\n").map(line => {
-    const cells: string[] = []
-    let cur = "", inQ = false
-    for (const ch of line) {
-      if (ch === '"') { inQ = !inQ }
-      else if ((ch === ";" || ch === ",") && !inQ) { cells.push(cur.trim()); cur = "" }
-      else { cur += ch }
-    }
-    cells.push(cur.trim())
-    return cells
-  })
-}
 
 function exportCSV(txs: Tx[]) {
   const headers = ["Fecha", "Descripción", "Tipo", "Monto (CLP)", "Cuenta", "Categoría"]
@@ -107,12 +94,14 @@ export default function TransactionsClient({
   const [editing, setEditing] = useState<Tx | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteTx, setConfirmDeleteTx] = useState<Tx | null>(null)
-  const [importRows, setImportRows] = useState<{ type: string; amount: number; description: string; date: string; accountId: string; categoryId?: string }[]>([])
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importRows, setImportRows] = useState<(StatementPreview["rows"][number] & { include: boolean })[]>([])
+  const [importLoading, setImportLoading] = useState(false)
+  const [importSkipped, setImportSkipped] = useState(0)
   const [importAccountId, setImportAccountId] = useState("")
   const [importing, setImporting] = useState(false)
   const [importDone, setImportDone] = useState<number | null>(null)
   const [importError, setImportError] = useState("")
-  const [importDupeCount, setImportDupeCount] = useState(0)
 
   // Recurring state
   const [recurring, setRecurring] = useState<Recurring[]>(initialRecurring ?? [])
@@ -145,51 +134,47 @@ export default function TransactionsClient({
     return r
   }, undefined)
 
-  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const text = ev.target?.result as string
-      const rows = parseCSV(text)
-      if (rows.length < 2) return
-      const start = rows[0].some(c => /fecha|date|tipo|type/i.test(c)) ? 1 : 0
-      const defaultAccount = importAccountId || accounts[0]?.id || ""
-      const parsed = rows.slice(start).map(r => {
-        const [dateStr, description, typeStr, amountStr] = r
-        const rawAmount = parseFloat((amountStr ?? "").replace(/[^0-9.,\-]/g, "").replace(",", ".")) || 0
-        const type = /ingreso|income/i.test(typeStr ?? "") ? "INCOME" : "EXPENSE"
-        let date = ""
-        if (/\d{2}\/\d{2}\/\d{4}/.test(dateStr ?? "")) {
-          const [d, m, y] = (dateStr ?? "").split("/")
-          date = `${y}-${m}-${d}`
-        } else {
-          date = (dateStr ?? "").slice(0, 10)
-        }
-        const matchedCat = categories.find(c => c.name.toLowerCase() === (r[5] ?? "").toLowerCase())
-        return { type, amount: Math.abs(rawAmount), description: description ?? "", date, accountId: defaultAccount, categoryId: matchedCat?.id }
-      }).filter(r => r.amount > 0 && r.date)
-      const seen = new Set<string>()
-      const deduped = parsed.filter(r => {
-        const key = `${r.date}|${r.amount}|${r.description}`
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      setImportDupeCount(parsed.length - deduped.length)
-      setImportRows(deduped)
-      importRef.current?.showModal()
+  /** Sends the statement to the API, which detects columns, categories and duplicates. */
+  async function previewImport(file: File, accountId: string) {
+    setImportLoading(true)
+    setImportError("")
+    const r = await api.transactions.previewImport(file, accountId || undefined)
+    setImportLoading(false)
+    if (!r.ok) {
+      setImportRows([])
+      setImportError(r.error)
+      return
     }
-    reader.readAsText(file, "utf-8")
-    e.target.value = ""
+    setImportSkipped(r.data.skipped)
+    // Rows already in the account start unchecked.
+    setImportRows(r.data.rows.map(row => ({ ...row, include: !row.duplicate })))
   }
 
+  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    const accountId = importAccountId || defaultAccountId || accounts[0]?.id || ""
+    setImportAccountId(accountId)
+    setImportFile(file)
+    setImportRows([])
+    setImportDone(null)
+    importRef.current?.showModal()
+    previewImport(file, accountId)
+  }
+
+  const selectedImport = importRows.filter(r => r.include)
+  const importDupeCount = importRows.filter(r => r.duplicate).length
+
   async function confirmImport() {
-    if (!importRows.length) return
+    if (!selectedImport.length || !importAccountId) return
     setImporting(true)
     setImportError("")
     const result = await api.transactions.import(
-      importRows.map(r => ({ ...r, type: r.type as "INCOME" | "EXPENSE" })),
+      selectedImport.map(r => ({
+        type: r.type, amount: r.amount, description: r.description || undefined,
+        date: r.date, accountId: importAccountId, categoryId: r.categoryId ?? undefined,
+      })),
     )
     setImporting(false)
     if (!result.ok) {
@@ -294,14 +279,14 @@ export default function TransactionsClient({
             </svg>
             CSV
           </button>
-          <button onClick={() => fileInputRef.current?.click()} title="Importar CSV"
+          <button onClick={() => fileInputRef.current?.click()} title="Importar cartola del banco (Excel o CSV)"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-black/[0.09] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] text-[13px] font-medium text-[#1d1d1f] dark:text-white hover:bg-[#f5f5f7] dark:hover:bg-white/[0.08] transition-all shadow-sm">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l4-4m-4 4V4" />
             </svg>
             Importar
           </button>
-          <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleFileImport} />
+          <input ref={fileInputRef} type="file" accept=".csv,.txt,.xls,.xlsx" className="hidden" onChange={handleFileImport} />
           <button
             onClick={() => { setRecurringTab("list"); recurringRef.current?.showModal() }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-black/[0.09] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] text-[13px] font-medium text-[#1d1d1f] dark:text-white hover:bg-[#f5f5f7] dark:hover:bg-white/[0.08] transition-all shadow-sm">
@@ -588,7 +573,7 @@ export default function TransactionsClient({
         className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-black/[0.08] dark:border-white/[0.08] backdrop:bg-black/40 open:flex open:flex-col m-auto"
         onClick={e => { if (e.target === e.currentTarget) importRef.current?.close() }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">Importar transacciones</h3>
+          <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">Importar cartola</h3>
           <button type="button" onClick={() => importRef.current?.close()} className="text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -600,47 +585,64 @@ export default function TransactionsClient({
           </div>
         ) : (
           <>
-            <p className="text-[12px] text-[#86868b] mb-1">{importRows.length} transacciones detectadas.</p>
-            {importError && <p className="text-[12px] text-[#ff3b30] mb-2">{importError}</p>}
-            {importDupeCount > 0 && (
-              <p className="text-[11px] text-[#ff9500] mb-3">{importDupeCount} fila{importDupeCount !== 1 ? "s" : ""} duplicada{importDupeCount !== 1 ? "s" : ""} eliminada{importDupeCount !== 1 ? "s" : ""} automáticamente.</p>
-            )}
+            <p className="text-[12px] text-[#86868b] mb-3 truncate">
+              {importFile?.name} · Excel (.xls, .xlsx) o CSV de tu banco.
+            </p>
             <div className="mb-3">
-              <label className={labelCls}>Cuenta por defecto</label>
+              <label className={labelCls}>Cuenta de la cartola</label>
               <select value={importAccountId} onChange={e => {
                 const id = e.target.value
                 setImportAccountId(id)
-                setImportRows(rows => rows.map(r => ({ ...r, accountId: id })))
+                // Duplicates depend on the account: ask the API again.
+                if (importFile) previewImport(importFile, id)
               }} className={inputCls}>
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
-            <div className="max-h-56 overflow-y-auto border border-black/[0.06] dark:border-white/[0.06] rounded-xl mb-4 text-[11px]">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-[#f5f5f7] dark:bg-[#2c2c2e]">
-                  <tr>{["Fecha", "Descripción", "Tipo", "Monto"].map(h => (
-                    <th key={h} className="px-3 py-2 text-left font-semibold text-[#86868b] uppercase tracking-wide">{h}</th>
-                  ))}</tr>
-                </thead>
-                <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
-                  {importRows.slice(0, 50).map((r, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-2 text-[#1d1d1f] dark:text-white">{r.date}</td>
-                      <td className="px-3 py-2 text-[#1d1d1f] dark:text-white truncate max-w-[120px]">{r.description || "—"}</td>
-                      <td className="px-3 py-2"><span className={`font-semibold ${r.type === "INCOME" ? "text-[#34c759]" : "text-[#ff3b30]"}`}>{r.type === "INCOME" ? "Ingreso" : "Gasto"}</span></td>
-                      <td className="px-3 py-2 text-[#1d1d1f] dark:text-white tabular-nums">{fmt(r.amount)}</td>
-                    </tr>
+            {importError && <p className="text-[12px] text-[#ff3b30] mb-3">{importError}</p>}
+            {importLoading ? (
+              <div className="py-10 flex flex-col items-center gap-3">
+                <BrandLoader size={44} />
+                <p className="text-[12px] text-[#86868b]">Leyendo la cartola…</p>
+              </div>
+            ) : importRows.length > 0 && (
+              <>
+                <p className="text-[12px] text-[#86868b] mb-2">
+                  {importRows.length} movimiento{importRows.length !== 1 ? "s" : ""} detectado{importRows.length !== 1 ? "s" : ""}
+                  {importSkipped > 0 && <> · {importSkipped} fila{importSkipped !== 1 ? "s" : ""} de saldo o totales ignorada{importSkipped !== 1 ? "s" : ""}</>}
+                </p>
+                {importDupeCount > 0 && (
+                  <p className="text-[11px] text-[#ff9500] mb-2">
+                    {importDupeCount} ya existe{importDupeCount !== 1 ? "n" : ""} en esta cuenta y quedó desmarcado{importDupeCount !== 1 ? "s" : ""}. Márcalo si de verdad es otro movimiento.
+                  </p>
+                )}
+                <div className="max-h-64 overflow-y-auto border border-black/[0.06] dark:border-white/[0.06] rounded-xl mb-4 text-[11px] divide-y divide-black/[0.04] dark:divide-white/[0.04]">
+                  {importRows.map((r, i) => (
+                    <label key={r.line} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${r.include ? "" : "opacity-45"}`}>
+                      <input type="checkbox" checked={r.include} className="accent-[#007aff] flex-shrink-0"
+                        onChange={e => setImportRows(rows => rows.map((x, k) => k === i ? { ...x, include: e.target.checked } : x))} />
+                      <span className="w-[68px] flex-shrink-0 text-[#86868b] tabular-nums">{r.date.slice(8)}/{r.date.slice(5, 7)}/{r.date.slice(2, 4)}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block truncate text-[#1d1d1f] dark:text-white">{r.description || "—"}</span>
+                        <span className="text-[10px] text-[#86868b]">
+                          {categories.find(c => c.id === r.categoryId)?.name ?? "Sin categoría"}
+                          {r.duplicate && <span className="ml-1.5 text-[#ff9500] font-semibold">· Ya existe</span>}
+                        </span>
+                      </span>
+                      <span className={`font-semibold tabular-nums flex-shrink-0 ${r.type === "INCOME" ? "text-[#34c759]" : "text-[#1d1d1f] dark:text-white"}`}>
+                        {r.type === "INCOME" ? "+" : "−"}{fmt(r.amount)}
+                      </span>
+                    </label>
                   ))}
-                </tbody>
-              </table>
-              {importRows.length > 50 && <p className="px-3 py-2 text-[#86868b]">+{importRows.length - 50} más...</p>}
-            </div>
+                </div>
+              </>
+            )}
             <div className="flex gap-2.5">
               <button onClick={() => importRef.current?.close()}
                 className="flex-1 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white text-[13px] font-semibold">Cancelar</button>
-              <button onClick={confirmImport} disabled={importing || !importRows.length}
+              <button onClick={confirmImport} disabled={importing || importLoading || !selectedImport.length}
                 className="flex-1 py-2.5 rounded-xl bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f] text-[13px] font-semibold hover:opacity-90 disabled:opacity-40">
-                {importing ? "Importando..." : `Importar ${importRows.length}`}
+                {importing ? "Importando..." : `Importar ${selectedImport.length}`}
               </button>
             </div>
           </>

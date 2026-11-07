@@ -46,6 +46,18 @@ async function request<T>(method: string, path: string, body?: Body): Promise<Ap
   }
 }
 
+/** multipart/form-data upload (files); same envelope and error handling as request(). */
+async function upload<T>(path: string, form: FormData): Promise<ApiResult<T>> {
+  try {
+    const res = await fetch(`${BASE}${path}`, { method: "POST", credentials: "same-origin", body: form })
+    const json = await res.json().catch(() => null)
+    if (!res.ok) return { ok: false, error: json?.error?.message ?? "Algo salió mal", fields: json?.error?.fields }
+    return { ok: true, data: json?.data as T }
+  } catch {
+    return { ok: false, error: "No hay conexión con el servidor" }
+  }
+}
+
 const get = <T>(path: string) => request<T>("GET", path)
 const post = <T>(path: string, body?: Body) => request<T>("POST", path, body ?? {})
 const put = <T>(path: string, body: Body) => request<T>("PUT", path, body)
@@ -60,6 +72,15 @@ const qs = (params: Record<string, string | number | undefined>) => {
 }
 
 type WithId = { id: string }
+
+export type StatementPreview = {
+  fileName: string
+  sheet: string
+  rows: { line: number; date: string; description: string; type: "INCOME" | "EXPENSE"; amount: number; categoryId: string | null; duplicate: boolean }[]
+  skipped: number
+  duplicates: number
+  truncated: boolean
+}
 
 export const api = {
   me: {
@@ -101,6 +122,13 @@ export const api = {
     update: (id: string, body: In<typeof S.TransactionUpdate> | FormData) => patch<WithId>(`/transactions/${id}`, body as Body),
     remove: (id: string) => del<WithId>(`/transactions/${id}`),
     import: (rows: In<typeof S.TransactionImport>["rows"]) => post<{ imported: number }>("/transactions/import", { rows }),
+    /** Parses a bank statement on the server; nothing is saved until import(). */
+    previewImport: (file: File, accountId?: string) => {
+      const form = new FormData()
+      form.set("file", file)
+      if (accountId) form.set("accountId", accountId)
+      return upload<StatementPreview>("/transactions/import/preview", form)
+    },
   },
   transfers: {
     create: (body: In<typeof S.TransferCreate> | FormData) => post<WithId>("/transfers", body as Body),

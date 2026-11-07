@@ -73,6 +73,13 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/transactions/import": {
     post: { tag: "Movimientos", summary: "Importa movimientos en lote", body: S.TransactionImport, status: 201 },
   },
+  "/transactions/import/preview": {
+    post: {
+      tag: "Movimientos",
+      summary: "Lee una cartola bancaria (Excel o CSV, multipart: file, accountId?) y devuelve los movimientos detectados sin guardarlos; marca duplicados y sugiere categorías",
+      body: z.object({ file: z.string().describe("Archivo .xls, .xlsx o .csv (máx. 4 MB)"), accountId: z.string().optional() }),
+    },
+  },
   "/transfers": {
     post: { tag: "Movimientos", summary: "Transfiere entre dos cuentas propias", body: S.TransferCreate, status: 201 },
   },
