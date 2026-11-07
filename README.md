@@ -41,4 +41,23 @@ npm run test:api     # prueba end-to-end de /api/v1 contra el servidor de desarr
 
 ## Deploy
 
-Vercel publica automáticamente cada push a `main`. Los cambios en `prisma/schema.prisma` no se aplican solos: las migraciones hay que correrlas aparte contra Neon.
+Vercel publica automáticamente cada push a `main`. El script `vercel-build` corre `prisma migrate deploy` antes del build, así que las migraciones de `prisma/migrations` se aplican solas; si una falla, el deploy se detiene. Para aplicarlas a mano: `npm run db:migrate`.
+
+GitHub Actions (`.github/workflows/ci.yml`) corre lint y build en cada push y pull request.
+
+### Variables de entorno
+
+| Variable | Para qué | Obligatoria |
+| --- | --- | --- |
+| `DATABASE_URL`, `AUTH_SECRET` | Base de datos y sesiones | Sí |
+| `AUTH_GITHUB_ID/SECRET`, `AUTH_GOOGLE_ID/SECRET` | Login social | Para cada proveedor |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Emails (recuperar contraseña, alertas). Sin clave, el email se escribe en el log | Para enviar emails |
+| `ALERT_EMAIL` | Recibe un aviso cuando hay errores (máx. 1 cada 15 min) | No |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Notificaciones push (`npx web-push generate-vapid-keys`) | Para push |
+| `VAPID_SUBJECT` | Contacto para los servicios push (`mailto:` o `https://`); por defecto la URL de producción | No |
+| `CRON_SECRET` | Protege el job diario `/api/v1/jobs/daily` | Sí, en producción |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | Email de contacto en Privacidad y Términos | No |
+
+### Job diario
+
+`vercel.json` programa `GET /api/v1/jobs/daily` a las 12:00 UTC (09:00 en Chile). Genera los movimientos recurrentes de todos, envía las alertas push (cobros de mañana y presupuestos al 90 % y al 100 %, una sola vez cada una) y limpia los registros vencidos: errores de más de 90 días, enlaces de recuperación y límites de intentos.
