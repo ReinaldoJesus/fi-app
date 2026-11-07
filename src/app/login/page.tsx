@@ -5,6 +5,7 @@ import AuthShell from "@/components/AuthShell"
 import { loginWithCredentials, loginWithGitHub, loginWithGoogle } from "@/app/actions/auth"
 import { LoadingScreen } from "@/components/BrandLoader"
 import SubmitOverlay from "@/components/SubmitOverlay"
+import { ClearOfflinePages } from "@/components/ServiceWorker"
 
 const inputCls = "w-full px-4 py-3 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px] transition-all"
 
@@ -14,6 +15,7 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ re
 
   return (
     <AuthShell title="Iniciar sesión" subtitle="Ingresa a tu banca personal Clarifi.">
+          <ClearOfflinePages />
           {pending && <LoadingScreen overlay label="Iniciando sesión…" />}
 
           {reset && !state?.error && (
