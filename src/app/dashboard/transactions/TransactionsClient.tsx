@@ -3,6 +3,7 @@ import { useRef, useState, useTransition, useMemo, useActionState } from "react"
 import { useRouter } from "next/navigation"
 import { api, type StatementPreview } from "@/lib/api/client"
 import { BrandLoader } from "@/components/BrandLoader"
+import ReceiptField from "./ReceiptField"
 import NewTransactionButton from "../components/NewTransactionButton"
 import NewTransferButton from "../components/NewTransferButton"
 import ConfirmDialog from "@/components/ConfirmDialog"
@@ -11,6 +12,7 @@ type Tx = {
   id: string; amount: number; type: string; description: string | null; notes: string | null; date: string
   category: { id: string; name: string; color: string; icon: string | null } | null
   account: { id: string; name: string }
+  hasReceipt?: boolean
 }
 type Account = { id: string; name: string; type: string; balance: number }
 type Category = { id: string; name: string; type: string; icon: string | null }
@@ -396,6 +398,15 @@ export default function TransactionsClient({
                         {t.account.name}{t.category && <> · {t.category.name}</>}
                       </p>
                       {t.notes && <p className="text-[11px] text-[#86868b] mt-0.5 truncate italic">{t.notes}</p>}
+                      {t.hasReceipt && (
+                        <a href={api.transactions.receiptUrl(t.id)} target="_blank" rel="noopener"
+                          className="inline-flex items-center gap-1 mt-1 text-[11px] font-medium text-[#007aff] hover:opacity-70">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          Boleta
+                        </a>
+                      )}
                     </div>
                     <span className={`text-[13px] font-semibold tabular-nums flex-shrink-0 ${t.type === "INCOME" ? "text-[#34c759]" : "text-[#1d1d1f] dark:text-white"}`}>
                       {t.type === "INCOME" ? "+" : t.type === "TRANSFER" ? "" : "−"}{fmt(t.amount)}
@@ -694,6 +705,11 @@ export default function TransactionsClient({
               </select></div>
             <div><label className={labelCls}>Fecha</label>
               <input name="date" type="date" required defaultValue={toDateInput(editing.date)} className={inputCls} /></div>
+            <ReceiptField
+              transactionId={editing.id}
+              hasReceipt={!!editing.hasReceipt}
+              onChange={has => setEditing(e => (e ? { ...e, hasReceipt: has } : e))}
+            />
             <div className="flex gap-2.5 pt-1">
               <button type="button" onClick={() => editRef.current?.close()}
                 className="flex-1 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white text-[13px] font-semibold">Cancelar</button>

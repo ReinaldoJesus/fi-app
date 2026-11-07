@@ -47,9 +47,9 @@ async function request<T>(method: string, path: string, body?: Body): Promise<Ap
 }
 
 /** multipart/form-data upload (files); same envelope and error handling as request(). */
-async function upload<T>(path: string, form: FormData): Promise<ApiResult<T>> {
+async function upload<T>(path: string, form: FormData, method: "POST" | "PUT" = "POST"): Promise<ApiResult<T>> {
   try {
-    const res = await fetch(`${BASE}${path}`, { method: "POST", credentials: "same-origin", body: form })
+    const res = await fetch(`${BASE}${path}`, { method, credentials: "same-origin", body: form })
     const json = await res.json().catch(() => null)
     if (!res.ok) return { ok: false, error: json?.error?.message ?? "Algo salió mal", fields: json?.error?.fields }
     return { ok: true, data: json?.data as T }
@@ -122,6 +122,14 @@ export const api = {
     update: (id: string, body: In<typeof S.TransactionUpdate> | FormData) => patch<WithId>(`/transactions/${id}`, body as Body),
     remove: (id: string) => del<WithId>(`/transactions/${id}`),
     import: (rows: In<typeof S.TransactionImport>["rows"]) => post<{ imported: number }>("/transactions/import", { rows }),
+    /** URL of the receipt image (owner-only; usable in <img src>). */
+    receiptUrl: (id: string, version?: string | number) => `${BASE}/transactions/${id}/receipt${version ? `?v=${version}` : ""}`,
+    uploadReceipt: (id: string, image: Blob) => {
+      const form = new FormData()
+      form.set("file", image, "boleta.jpg")
+      return upload<{ transactionId: string; size: number }>(`/transactions/${id}/receipt`, form, "PUT")
+    },
+    removeReceipt: (id: string) => del<{ deleted: true }>(`/transactions/${id}/receipt`),
     /** Parses a bank statement on the server; nothing is saved until import(). */
     previewImport: (file: File, accountId?: string) => {
       const form = new FormData()

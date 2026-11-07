@@ -42,12 +42,13 @@ const txSelect = {
   category: { select: { id: true, name: true, color: true, icon: true } },
   account: { select: { id: true, name: true } },
   toAccount: { select: { id: true, name: true } },
+  receipt: { select: { id: true } },
 } satisfies Prisma.TransactionSelect
 
 type TxRow = Prisma.TransactionGetPayload<{ select: typeof txSelect }>
 
-export function serializeTransaction(t: TxRow) {
-  return { ...t, amount: num(t.amount), date: t.date.toISOString(), createdAt: t.createdAt.toISOString() }
+export function serializeTransaction({ receipt, ...t }: TxRow) {
+  return { ...t, amount: num(t.amount), date: t.date.toISOString(), createdAt: t.createdAt.toISOString(), hasReceipt: !!receipt }
 }
 
 export async function listTransactions(userId: string, q: z.infer<typeof TransactionListQuery>) {
@@ -215,6 +216,7 @@ export async function getTransactionsOverview(userId: string) {
         id: true, amount: true, type: true, description: true, notes: true, date: true,
         category: { select: { id: true, name: true, color: true, icon: true } },
         account: { select: { id: true, name: true } },
+        receipt: { select: { id: true } },
       },
     }),
     prisma.finAccount.findMany({
@@ -244,7 +246,7 @@ export async function getTransactionsOverview(userId: string) {
   }
 
   return {
-    transactions: transactions.map(t => ({ ...t, amount: num(t.amount), date: t.date.toISOString() })),
+    transactions: transactions.map(({ receipt, ...t }) => ({ ...t, amount: num(t.amount), date: t.date.toISOString(), hasReceipt: !!receipt })),
     accounts: accounts.map(a => ({ ...a, balance: num(a.balance) })),
     categories,
     budgetStatus,
