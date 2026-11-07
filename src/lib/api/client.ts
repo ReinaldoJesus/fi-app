@@ -73,6 +73,11 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 type WithId = { id: string }
 
+export type TransactionSuggestions = {
+  suggestions: { description: string; type: "INCOME" | "EXPENSE"; count: number; categoryId: string | null; accountId: string; amount: number }[]
+  topCategory: { INCOME: string | null; EXPENSE: string | null }
+}
+
 export type StatementPreview = {
   fileName: string
   sheet: string
@@ -122,6 +127,7 @@ export const api = {
     update: (id: string, body: In<typeof S.TransactionUpdate> | FormData) => patch<WithId>(`/transactions/${id}`, body as Body),
     remove: (id: string) => del<WithId>(`/transactions/${id}`),
     import: (rows: In<typeof S.TransactionImport>["rows"]) => post<{ imported: number }>("/transactions/import", { rows }),
+    suggestions: () => get<TransactionSuggestions>("/transactions/suggestions"),
     /** URL of the receipt image (owner-only; usable in <img src>). */
     receiptUrl: (id: string, version?: string | number) => `${BASE}/transactions/${id}/receipt${version ? `?v=${version}` : ""}`,
     uploadReceipt: (id: string, image: Blob) => {

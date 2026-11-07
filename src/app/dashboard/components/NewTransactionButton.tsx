@@ -1,7 +1,7 @@
 "use client"
 import { useRef, useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
-import { api } from "@/lib/api/client"
+import { api, type TransactionSuggestions } from "@/lib/api/client"
 import { QuickActionContent, quickActionCls } from "@/components/QuickAction"
 
 type Account = { id: string; name: string; type?: string }
@@ -26,17 +26,65 @@ export default function NewTransactionButton({
   const initialType = variant === "income" ? "INCOME" : "EXPENSE"
   const [type, setType] = useState<"INCOME" | "EXPENSE">(initialType)
   const [selectedCategoryId, setSelectedCategoryId] = useState("")
+  const [categoryTouched, setCategoryTouched] = useState(false)
+  const [amount, setAmount] = useState("")
+  const [description, setDescription] = useState("")
+  const [hints, setHints] = useState<TransactionSuggestions | null>(null)
+  const [formKey, setFormKey] = useState(0)
   const today = new Date().toLocaleDateString("en-CA")
 
   const budgetInfo = type === "EXPENSE" && selectedCategoryId && budgetStatus?.[selectedCategoryId]
     ? budgetStatus[selectedCategoryId]
     : null
 
+  /** Smart default: the category this user picks most often for the type. */
+  function defaultCategory(t: "INCOME" | "EXPENSE", h: TransactionSuggestions | null) {
+    const id = h?.topCategory[t]
+    return id && categories.some(c => c.id === id && c.type === t) ? id : ""
+  }
+
+  function openDialog(t: "INCOME" | "EXPENSE") {
+    setType(t)
+    setAmount("")
+    setDescription("")
+    setCategoryTouched(false)
+    setSelectedCategoryId(defaultCategory(t, hints))
+    setFormKey(k => k + 1)
+    dialogRef.current?.showModal()
+    if (!hints) {
+      api.transactions.suggestions().then(r => {
+        if (!r.ok) return
+        setHints(r.data)
+        // Only fill the category if the user hasn't picked one meanwhile.
+        setSelectedCategoryId(cur => cur || defaultCategory(t, r.data))
+      })
+    }
+  }
+
+  function changeType(t: "INCOME" | "EXPENSE") {
+    setType(t)
+    if (!categoryTouched) setSelectedCategoryId(defaultCategory(t, hints))
+  }
+
+  /** Picking a known description fills its usual category and amount (never overwrites what you typed). */
+  function changeDescription(value: string) {
+    setDescription(value)
+    const match = hints?.suggestions.find(s => s.type === type && s.description.toLowerCase() === value.trim().toLowerCase())
+    if (!match) return
+    if (match.categoryId && (!categoryTouched || !selectedCategoryId)) setSelectedCategoryId(match.categoryId)
+    if (!amount) setAmount(String(match.amount))
+  }
+
+  const typed = Number(amount) || 0
+  const typeSuggestions = hints?.suggestions.filter(s => s.type === type) ?? []
+
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
     const result = await api.transactions.create(formData)
     if (!result.error) {
       dialogRef.current?.close()
       router.refresh()
+      // The new movement becomes a future suggestion.
+      setHints(null)
     }
     return result
   }, undefined)
@@ -44,7 +92,7 @@ export default function NewTransactionButton({
   return (
     <>
       {variant === "button" ? (
-        <button onClick={() => dialogRef.current?.showModal()}
+        <button onClick={() => openDialog("EXPENSE")}
           className="flex items-center gap-1.5 px-4 py-2 bg-[#1d1d1f] dark:bg-white hover:opacity-90 text-white dark:text-[#1d1d1f] text-[13px] font-semibold rounded-xl transition-all">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -53,7 +101,7 @@ export default function NewTransactionButton({
         </button>
       ) : (
         <button type="button" className={quickActionCls}
-          onClick={() => { setType(initialType); setSelectedCategoryId(""); dialogRef.current?.showModal() }}>
+          onClick={() => openDialog(initialType)}>
           <QuickActionContent kind={variant} label={variant === "income" ? "Ingreso" : "Gasto"} />
         </button>
       )}
@@ -76,11 +124,11 @@ export default function NewTransactionButton({
         {accounts.length === 0 ? (
           <p className="text-sm text-[#86868b] text-center py-6">Primero crea una cuenta en la sección Cuentas.</p>
         ) : (
-          <form action={action} className="space-y-4">
+          <form key={formKey} action={action} className="space-y-4">
             <div className="grid grid-cols-2 gap-2 p-1 bg-[#f5f5f7] dark:bg-white/[0.06] rounded-xl">
               {(["EXPENSE", "INCOME"] as const).map((t) => (
                 <label key={t} className="cursor-pointer">
-                  <input type="radio" name="type" value={t} checked={type === t} onChange={() => setType(t)} className="sr-only" />
+                  <input type="radio" name="type" value={t} checked={type === t} onChange={() => changeType(t)} className="sr-only" />
                   <span className={`block text-center py-2 rounded-lg text-[13px] font-semibold transition-all ${
                     type === t ? "bg-white dark:bg-white/[0.12] text-[#1d1d1f] dark:text-white shadow-sm" : "text-[#86868b]"
                   }`}>{t === "EXPENSE" ? "Gasto" : "Ingreso"}</span>
@@ -89,10 +137,16 @@ export default function NewTransactionButton({
             </div>
 
             <div><label className={labelCls}>Monto (CLP)</label>
-              <input name="amount" type="number" min="1" step="1" required placeholder="0" className={inputCls} /></div>
+              <input name="amount" type="number" min="1" step="1" required placeholder="0" inputMode="numeric"
+                value={amount} onChange={e => setAmount(e.target.value)} className={inputCls} /></div>
 
             <div><label className={labelCls}>Descripción</label>
-              <input name="description" placeholder="Ej: Supermercado" className={inputCls} /></div>
+              <input name="description" placeholder="Ej: Supermercado" autoComplete="off" list={`tx-hints-${type}`}
+                value={description} onChange={e => changeDescription(e.target.value)} className={inputCls} />
+              <datalist id={`tx-hints-${type}`}>
+                {typeSuggestions.map(s => <option key={s.description} value={s.description} />)}
+              </datalist>
+            </div>
 
             <div><label className={labelCls}>Notas (opcional)</label>
               <textarea name="notes" placeholder="Detalles adicionales..." rows={2}
@@ -109,20 +163,24 @@ export default function NewTransactionButton({
             {categories.filter((c) => c.type === type).length > 0 && (
               <div>
                 <label className={labelCls}>Categoría</label>
-                <select name="categoryId" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className={inputCls}>
+                <select name="categoryId" value={selectedCategoryId} onChange={e => { setCategoryTouched(true); setSelectedCategoryId(e.target.value) }} className={inputCls}>
                   <option value="">Sin categoría</option>
                   {categories.filter((c) => c.type === type).map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                 </select>
                 {budgetInfo && (() => {
-                  const remaining = budgetInfo.budget - budgetInfo.spent
-                  const pct = Math.round((budgetInfo.spent / budgetInfo.budget) * 100)
+                  // In context: what this amount does to the category's budget, as you type it.
+                  const spentAfter = budgetInfo.spent + typed
+                  const remaining = budgetInfo.budget - spentAfter
+                  const pct = Math.round((spentAfter / budgetInfo.budget) * 100)
+                  const share = Math.round((typed / budgetInfo.budget) * 100)
                   const over = remaining < 0
                   const color = over ? "#ff3b30" : pct >= 80 ? "#ff9500" : "#34c759"
                   return (
-                    <div className="mt-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium" style={{ backgroundColor: `${color}15`, color }}>
+                    <div className="mt-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium" style={{ backgroundColor: `${color}15`, color }}>
+                      {typed > 0 && <p className="mb-0.5">Este gasto es el {share}% de tu presupuesto de {categories.find(c => c.id === selectedCategoryId)?.name ?? "la categoría"}.</p>}
                       {over
-                        ? <span>⚠️ Superado por {fmt(Math.abs(remaining))} · {pct}% usado</span>
-                        : <span>Quedan {fmt(remaining)} de {fmt(budgetInfo.budget)} · {pct}% usado</span>
+                        ? <p>⚠️ {typed > 0 ? "Con este gasto lo superas" : "Superado"} por {fmt(Math.abs(remaining))} · {pct}% usado</p>
+                        : <p>{typed > 0 ? "Después de este gasto quedan" : "Quedan"} {fmt(remaining)} de {fmt(budgetInfo.budget)} · {pct}% usado</p>
                       }
                     </div>
                   )

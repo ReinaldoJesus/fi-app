@@ -2,6 +2,7 @@ import Link from "next/link"
 import { auth } from "@/auth"
 import { getSummary } from "@/server/services/reports"
 import { generateDueRecurring } from "@/server/services/recurring"
+import { getOnboarding } from "@/server/services/insights"
 import NewTransactionButton from "./components/NewTransactionButton"
 import NewAccountButton from "./components/NewAccountButton"
 import OnboardingBanner from "./components/OnboardingBanner"
@@ -46,14 +47,7 @@ export default async function DashboardPage() {
   const month = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date())
 
   // Onboarding steps status
-  const onboardingSteps = [
-    { label: "Primera cuenta", description: "Cuenta bancaria, tarjeta o efectivo.", done: accounts.length > 0, href: "/dashboard/accounts" },
-    { label: "Primer movimiento", description: "Registra un ingreso o gasto.", done: recentTransactions.length > 0, href: "/dashboard/transactions" },
-    { label: "Primer presupuesto", description: "Fija un límite mensual por categoría.", done: budgetProgress.length > 0, href: "/dashboard/budgets" },
-    { label: "Suscripción activa", description: "Netflix, Spotify u otro cobro fijo.", done: activeSubs.length > 0, href: "/dashboard/subscriptions" },
-  ]
-  const onboardingDoneCount = onboardingSteps.filter(s => s.done).length
-  const onboardingComplete = onboardingDoneCount === onboardingSteps.length
+  const onboarding = await getOnboarding(userId)
 
   // Full-page onboarding for brand-new users
   if (accounts.length === 0) {
@@ -83,7 +77,31 @@ export default async function DashboardPage() {
 
         {/* Steps */}
         <div className="w-full max-w-[480px] space-y-2.5 mb-12">
-          {/* Step 1 — active */}
+          {/* Progress: signing up already counts, so it never starts at zero */}
+          <div className="px-1 pb-1">
+            <div className="flex items-center justify-between text-[12px] mb-1.5">
+              <span className="font-semibold text-[#1d1d1f] dark:text-white">Tu Clarifi está {onboarding.percent}% listo</span>
+              <span className="text-[#86868b]">{onboarding.done} de {onboarding.total} pasos</span>
+            </div>
+            <div className="h-1.5 bg-[#e5e5ea] dark:bg-white/[0.08] rounded-full overflow-hidden">
+              <div className="h-full bg-[#34c759] rounded-full" style={{ width: `${onboarding.percent}%` }} />
+            </div>
+          </div>
+
+          {/* Step 1 — done */}
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-[#34c759]/25 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-[#34c759] flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white">Crear tu cuenta Clarifi</p>
+              <p className="text-[12px] text-[#34c759] font-medium mt-0.5">Listo</p>
+            </div>
+          </div>
+
+          {/* Step 2 — active */}
           <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-[#007aff]/25 dark:border-[#007aff]/25 shadow-[0_0_0_4px_rgba(0,122,255,0.07),0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_4px_rgba(0,122,255,0.12)] p-5">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-[#007aff] flex items-center justify-center flex-shrink-0 shadow-[0_4px_12px_rgba(0,122,255,0.35)]">
@@ -94,7 +112,7 @@ export default async function DashboardPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-0.5">
                   <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white">Agrega tu primera cuenta</p>
-                  <span className="text-[10px] font-bold text-[#007aff] bg-[#007aff]/10 px-2 py-0.5 rounded-full tracking-wide">PASO 1</span>
+                  <span className="text-[10px] font-bold text-[#007aff] bg-[#007aff]/10 px-2 py-0.5 rounded-full tracking-wide">PASO 2</span>
                 </div>
                 <p className="text-[13px] text-[#86868b] mb-4">Cuenta bancaria, tarjeta de crédito o efectivo.</p>
                 <NewAccountButton />
@@ -102,22 +120,22 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Steps 2-4 — upcoming */}
+          {/* Steps 3-5 — upcoming */}
           {[
             {
-              num: 2, color: "#34c759",
+              num: 3, color: "#34c759",
               icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />,
               title: "Registra tus movimientos",
               desc: "Anota ingresos y gastos del día a día.",
             },
             {
-              num: 3, color: "#ff9500",
+              num: 4, color: "#ff9500",
               icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
               title: "Fija presupuestos mensuales",
               desc: "Controla cuánto gastas en cada categoría.",
             },
             {
-              num: 4, color: "#af52de",
+              num: 5, color: "#af52de",
               icon: <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />,
               title: "Agrega suscripciones recurrentes",
               desc: "Netflix, Spotify, gym y cobros fijos.",
@@ -232,7 +250,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {!onboardingComplete && <OnboardingBanner steps={onboardingSteps} />}
+      {!onboarding.completed && <OnboardingBanner steps={onboarding.steps} percent={onboarding.percent} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 

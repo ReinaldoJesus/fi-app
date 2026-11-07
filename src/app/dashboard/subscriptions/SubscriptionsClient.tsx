@@ -176,7 +176,11 @@ function SubForm({
   )
 }
 
-export default function SubscriptionsClient({ initialSubs }: { initialSubs: Sub[] }) {
+export default function SubscriptionsClient({ initialSubs, shareOfIncome }: {
+  initialSubs: Sub[]
+  /** % of the average monthly income (last 3 months) that subscriptions take; null without income data. */
+  shareOfIncome?: number | null
+}) {
   const router = useRouter()
   const addRef = useRef<HTMLDialogElement>(null)
   const editRef = useRef<HTMLDialogElement>(null)
@@ -255,6 +259,11 @@ export default function SubscriptionsClient({ initialSubs }: { initialSubs: Sub[
               <p className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white">{fmt(Math.round(totalMonthly / 30))}</p>
             </div>
           </div>
+        )}
+        {active.length > 0 && shareOfIncome != null && (
+          <p className="mt-3 text-[12px] text-[#86868b]">
+            Equivale al <span className="font-semibold text-[#1d1d1f] dark:text-white">{shareOfIncome.toLocaleString("es-CL")}%</span> de tus ingresos mensuales (promedio de los últimos 3 meses).
+          </p>
         )}
       </div>
 

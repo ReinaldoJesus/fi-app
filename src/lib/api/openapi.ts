@@ -73,6 +73,15 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/transactions/import": {
     post: { tag: "Movimientos", summary: "Importa movimientos en lote", body: S.TransactionImport, status: 201 },
   },
+  "/transactions/suggestions": {
+    get: { tag: "Movimientos", summary: "Sugerencias para el formulario: descripciones frecuentes con su categoría, cuenta y monto habituales" },
+  },
+  "/me/onboarding": {
+    get: { tag: "Perfil", summary: "Primeros pasos y progreso (crear la cuenta ya cuenta como paso)" },
+  },
+  "/subscriptions/insight": {
+    get: { tag: "Suscripciones", summary: "Total mensual de suscripciones y qué porcentaje de tus ingresos representa" },
+  },
   "/transactions/{id}/receipt": {
     get: { tag: "Movimientos", summary: "Imagen de la boleta adjunta (JPG, PNG o WebP)" },
     put: { tag: "Movimientos", summary: "Adjunta o reemplaza la foto de la boleta (multipart: file, máx. 2 MB)", body: z.object({ file: z.string().describe("Imagen JPG, PNG o WebP") }) },
