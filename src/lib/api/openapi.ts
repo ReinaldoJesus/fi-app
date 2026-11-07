@@ -35,6 +35,14 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/auth/password-reset/confirm": {
     post: { tag: "Auth", summary: "Fija la nueva contraseña con el token del email", body: S.PasswordResetConfirm, public: true },
   },
+  "/push-subscriptions": {
+    get: { tag: "Notificaciones", summary: "Dispositivos suscritos, si el servidor puede enviar push y su clave VAPID pública" },
+    post: { tag: "Notificaciones", summary: "Suscribe este navegador a notificaciones push", body: S.PushSubscriptionInput, status: 201 },
+    delete: { tag: "Notificaciones", summary: "Quita un dispositivo", body: S.PushUnsubscribe },
+  },
+  "/push-subscriptions/test": {
+    post: { tag: "Notificaciones", summary: "Envía una notificación de prueba a tus dispositivos" },
+  },
   "/errors": {
     post: { tag: "Operación", summary: "Reporta un error ocurrido en el navegador", body: S.ClientErrorReport, status: 202, public: true },
   },

@@ -77,6 +77,12 @@ export const api = {
     resetPassword: (body: In<typeof S.PasswordResetConfirm> | FormData) =>
       post<{ reset: true; email: string }>("/auth/password-reset/confirm", body as Body),
   },
+  push: {
+    status: () => get<{ configured: boolean; publicKey: string | null; devices: { id: string; endpoint: string; userAgent: string | null; createdAt: string }[] }>("/push-subscriptions"),
+    subscribe: (body: In<typeof S.PushSubscriptionInput>) => post<{ id: string; subscribed: true }>("/push-subscriptions", body),
+    unsubscribe: (endpoint: string) => request<{ subscribed: false }>("DELETE", "/push-subscriptions", { endpoint }),
+    test: () => post<{ devices: number; sent: number; removed: number }>("/push-subscriptions/test"),
+  },
   errors: {
     report: (body: In<typeof S.ClientErrorReport>) => post<{ recorded: true }>("/errors", body),
   },

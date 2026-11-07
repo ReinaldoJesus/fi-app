@@ -293,3 +293,15 @@ export const ClientErrorReport = z.object({
   path: z.string().max(500).optional(),
   digest: z.string().max(100).optional(),
 })
+
+// ── Web Push ───────────────────────────────────────────────────────────────
+/** Shape of PushSubscription.toJSON() in the browser. */
+export const PushSubscriptionInput = z.object({
+  endpoint: z.url("Endpoint inválido").max(1000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(200),
+    auth: z.string().min(1).max(100),
+  }),
+})
+
+export const PushUnsubscribe = z.object({ endpoint: z.string().min(1).max(1000) })

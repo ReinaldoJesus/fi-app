@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import ProviderBadge, { PROVIDER_LABEL } from "@/components/ProviderBadge"
 import { LoadingScreen } from "@/components/BrandLoader"
 import { logout } from "@/app/actions/auth"
+import PushSettings from "./PushSettings"
 
 type Account = { id: string; name: string }
 
@@ -215,6 +216,7 @@ export default function ProfileClient({
           )}
         </div>
         <div className="divide-y divide-black/[0.06] dark:divide-white/[0.05]">
+          <PushSettings />
           <SettingRow
             label="Traer presupuestos automáticamente"
             description="Copia el mes anterior al abrir un mes sin presupuestos."
