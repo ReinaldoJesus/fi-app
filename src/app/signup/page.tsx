@@ -46,6 +46,11 @@ export default function SignupPage() {
               className="w-full py-3 bg-[#1d1d1f] dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-[#1d1d1f] font-semibold rounded-xl text-[14px] transition-all mt-1">
               {pending ? "Creando cuenta..." : "Crear cuenta"}
             </button>
+            <p className="text-[11px] text-[#86868b] text-center leading-relaxed">
+              Al crear tu cuenta aceptas los{" "}
+              <Link href="/terms" className="text-[#007aff] hover:opacity-70">Términos de uso</Link> y la{" "}
+              <Link href="/privacy" className="text-[#007aff] hover:opacity-70">Política de privacidad</Link>.
+            </p>
           </form>
     </AuthShell>
   )

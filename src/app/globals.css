@@ -83,3 +83,15 @@ dialog[open]::backdrop {
   }
   .brand-loader-level { animation: none; transform: translateY(10px); }
 }
+
+/* Legal pages (privacy, terms) */
+.legal { color: #3a3a3c; font-size: 15px; line-height: 1.65; }
+.dark .legal { color: #d1d1d6; }
+.legal h2 { margin: 28px 0 8px; font-size: 17px; font-weight: 600; color: #1d1d1f; }
+.dark .legal h2 { color: #fff; }
+.legal p { margin: 0 0 12px; }
+.legal ul { margin: 0 0 12px; padding-left: 20px; list-style: disc; }
+.legal li { margin: 4px 0; }
+.legal a { color: #007aff; }
+.legal strong { color: #1d1d1f; font-weight: 600; }
+.dark .legal strong { color: #fff; }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import Link from "next/link"
 import BrandMark from "@/components/BrandMark"
 
 const FEATURES = [
@@ -89,6 +90,10 @@ export default function AuthShell({ title, subtitle, children, footer }: {
               <path strokeLinecap="round" d="M8 11V7a4 4 0 118 0v4" />
             </svg>
             Nunca te pediremos tu contraseña por correo · © 2026 Clarifi
+          </p>
+          <p className="mt-2 flex gap-3 text-[11px]">
+            <Link href="/privacy" className="text-[#86868b] hover:text-[#007aff] transition-colors">Privacidad</Link>
+            <Link href="/terms" className="text-[#86868b] hover:text-[#007aff] transition-colors">Términos</Link>
           </p>
         </div>
       </main>
