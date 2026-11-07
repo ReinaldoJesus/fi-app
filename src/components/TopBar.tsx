@@ -3,6 +3,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect, useRef, useState } from "react"
+import { useMounted } from "@/lib/useMounted"
 import { logout } from "@/app/actions/auth"
 import SubmitOverlay from "@/components/SubmitOverlay"
 import ProviderBadge from "@/components/ProviderBadge"
@@ -40,24 +41,21 @@ function AnimatedEye({ visible, size = 18 }: { visible: boolean; size?: number }
 const iconBtn = "relative flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200"
 const iconBtnIdle = "text-[#6e6e73] dark:text-[#8e8e93] hover:text-[#1d1d1f] dark:hover:text-white hover:bg-[#f5f5f7] dark:hover:bg-white/[0.08]"
 
+function loadIds(key: string): string[] {
+  if (typeof window === "undefined") return []
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "[]")
+    return Array.isArray(parsed) ? parsed : []
+  } catch { return [] }
+}
+
 function NotificationBell({ notifications }: { notifications: AppNotification[] }) {
   const [open, setOpen] = useState(false)
-  const [dismissed, setDismissed] = useState<string[]>([])
-  const [cleared, setCleared] = useState<string[]>([])
-  const [mounted, setMounted] = useState(false)
+  // Nothing renders until mounted, so reading localStorage in the initializers is hydration-safe.
+  const [dismissed, setDismissed] = useState<string[]>(() => loadIds("notif-dismissed"))
+  const [cleared, setCleared] = useState<string[]>(() => loadIds("notif-cleared"))
+  const mounted = useMounted()
   const panelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setMounted(true)
-    const load = (key: string): string[] => {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(key) ?? "[]")
-        return Array.isArray(parsed) ? parsed : []
-      } catch { return [] }
-    }
-    setDismissed(load("notif-dismissed"))
-    setCleared(load("notif-cleared"))
-  }, [])
 
   useEffect(() => {
     if (!open) return

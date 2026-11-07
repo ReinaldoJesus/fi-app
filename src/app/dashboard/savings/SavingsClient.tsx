@@ -153,6 +153,7 @@ export default function SavingsClient({ goals }: { goals: Goal[] }) {
     return r
   }, undefined)
 
+  const [now] = useState(() => Date.now())
   const active = goals.filter(g => !g.completed)
   const completed = goals.filter(g => g.completed)
   const totalTarget = active.reduce((s, g) => s + g.targetAmount, 0)
@@ -160,8 +161,7 @@ export default function SavingsClient({ goals }: { goals: Goal[] }) {
 
   function daysLeft(deadline: string | null) {
     if (!deadline) return null
-    const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
-    return diff
+    return Math.ceil((new Date(deadline).getTime() - now) / 86400000)
   }
 
   return (

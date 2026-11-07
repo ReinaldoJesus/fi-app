@@ -2,7 +2,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
+import { useMounted } from "@/lib/useMounted"
 import { logout } from "@/app/actions/auth"
 import SubmitOverlay from "@/components/SubmitOverlay"
 import ProviderBadge from "@/components/ProviderBadge"
@@ -22,10 +23,9 @@ type Props = {
 export default function Sidebar({ userName, userEmail, userImage, provider, urgentSubsCount, dbTheme }: Props) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
 
   useEffect(() => {
-    setMounted(true)
     if (dbTheme && dbTheme !== "system") setTheme(dbTheme)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

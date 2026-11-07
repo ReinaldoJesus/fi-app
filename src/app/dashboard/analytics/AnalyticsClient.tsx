@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useMounted } from "@/lib/useMounted"
 import { useRouter } from "next/navigation"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -50,9 +50,8 @@ export default function AnalyticsClient({
   period: number
   netWorth: number
 }) {
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const router = useRouter()
-  useEffect(() => setMounted(true), [])
 
   const totalExpense = byCategory.reduce((s, c) => s + c.amount, 0)
   const currentMonth = months[months.length - 1]
