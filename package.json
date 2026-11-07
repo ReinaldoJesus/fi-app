@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
+    "vercel-build": "prisma migrate deploy && next build",
     "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
     "test:api": "node scripts/api-smoke.mjs",
     "start": "next start",
     "lint": "eslint"
