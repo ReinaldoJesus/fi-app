@@ -51,7 +51,12 @@ export async function hit(key: string, rule: RateRule): Promise<{ allowed: boole
 }
 
 export async function resetRateLimit(key: string) {
-  await prisma.rateLimit.deleteMany({ where: { key } }).catch(() => {})
+  // try/catch (not .catch) so even a synchronous failure can't break the login that called it.
+  try {
+    await prisma.rateLimit.deleteMany({ where: { key } })
+  } catch (err) {
+    console.error("[rate-limit] could not reset", key, (err as Error).message)
+  }
 }
 
 export function minutesText(sec: number) {
