@@ -3,6 +3,7 @@ import { useRef, useActionState, useTransition, useState } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api/client"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import { POPULAR_SUBSCRIPTIONS as POPULAR } from "@/lib/suggestions"
 
 type Sub = {
   id: string
@@ -51,17 +52,6 @@ const KNOWN: Record<string, string> = {
   chatgpt: "🤖", "claude ai": "🤖", midjourney: "🎨",
   audible: "🎧", "kindle unlimited": "📚",
 }
-
-/** Most common services: one tap fills name, icon and category. */
-const POPULAR: { name: string; icon: string; category: string }[] = [
-  { name: "Netflix", icon: "🎬", category: "streaming" },
-  { name: "Spotify", icon: "🎵", category: "musica" },
-  { name: "Disney+", icon: "🏰", category: "streaming" },
-  { name: "YouTube Premium", icon: "▶️", category: "streaming" },
-  { name: "iCloud", icon: "☁️", category: "cloud" },
-  { name: "Gimnasio", icon: "💪", category: "fitness" },
-  { name: "ChatGPT", icon: "🤖", category: "productividad" },
-]
 
 const QUICK_EMOJIS = ["🎬","🎵","💪","🎮","☁️","💼","📺","🎨","📝","🏠","🚗","✈️","🍔","🐾","📚","🎧","🔐","⚽","🤖","▶️","🏰","🎌","📰","🛒"]
 

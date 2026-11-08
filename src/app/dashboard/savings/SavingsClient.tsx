@@ -3,6 +3,7 @@ import { useRef, useState, useTransition, useActionState } from "react"
 import { api } from "@/lib/api/client"
 import { useRouter } from "next/navigation"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import { GOAL_AMOUNTS, GOAL_DEADLINES, GOAL_PRESETS, fmtShort, monthsFromNow } from "@/lib/suggestions"
 
 type Goal = {
   id: string; name: string; icon: string | null; color: string
@@ -24,9 +25,14 @@ function GoalForm({ initial, action, pending, error, onCancel, submitLabel }: {
   const [color, setColor] = useState(initial?.color ?? "#34c759")
   const [targetAmount, setTargetAmount] = useState(initial?.targetAmount?.toString() ?? "")
   const [currentAmount, setCurrentAmount] = useState(initial?.currentAmount?.toString() ?? "0")
-
+  const [name, setName] = useState(initial?.name ?? "")
+  const [now] = useState(() => Date.now())
+  const [deadline, setDeadline] = useState(initial?.deadline ? initial.deadline.slice(0, 10) : "")
   const target = parseFloat(targetAmount) || 0
   const current = parseFloat(currentAmount) || 0
+  // In context: how much per month it takes to get there by the deadline.
+  const monthsLeft = deadline ? Math.max(1, Math.round((new Date(deadline).getTime() - now) / (30.44 * 86_400_000))) : 0
+  const perMonth = monthsLeft && target > current ? Math.ceil((target - current) / monthsLeft / 1000) * 1000 : 0
   const amountError = target > 0 && current > target ? "El monto actual no puede superar el objetivo." : null
 
   return (
@@ -39,7 +45,21 @@ function GoalForm({ initial, action, pending, error, onCancel, submitLabel }: {
 
       <div>
         <label className={labelCls}>Nombre</label>
-        <input name="name" type="text" required placeholder="Ej: Vacaciones, Auto nuevo..." defaultValue={initial?.name ?? ""} className={inputCls} />
+        <input name="name" type="text" required placeholder="Ej: Vacaciones, Auto nuevo..." value={name} onChange={e => setName(e.target.value)} className={inputCls} />
+        {!initial && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {GOAL_PRESETS.map(g => (
+              <button key={g.name} type="button" onClick={() => { setName(g.name); setIcon(g.icon); setColor(g.color) }}
+                className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  name === g.name
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+                {g.icon} {g.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -47,6 +67,18 @@ function GoalForm({ initial, action, pending, error, onCancel, submitLabel }: {
           <label className={labelCls}>Monto objetivo (CLP)</label>
           <input name="targetAmount" type="number" min="1" step="1" required
             value={targetAmount} onChange={e => setTargetAmount(e.target.value)} className={inputCls} />
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {GOAL_AMOUNTS.map(a => (
+              <button key={a} type="button" onClick={() => setTargetAmount(String(a))}
+                className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors !px-2 !py-1 !text-[11px] ${
+                  target === a
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+                {fmtShort(a)}
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <label className={labelCls}>Ya tienes (CLP)</label>
@@ -57,7 +89,22 @@ function GoalForm({ initial, action, pending, error, onCancel, submitLabel }: {
 
       <div>
         <label className={labelCls}>Fecha límite (opcional)</label>
-        <input name="deadline" type="date" defaultValue={initial?.deadline ? initial.deadline.slice(0, 10) : ""} className={inputCls} />
+        <input name="deadline" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className={inputCls} />
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {GOAL_DEADLINES.map(o => (
+            <button key={o.months} type="button" onClick={() => setDeadline(monthsFromNow(o.months))}
+              className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  deadline === monthsFromNow(o.months)
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+              En {o.label}
+            </button>
+          ))}
+        </div>
+        {perMonth > 0 && (
+          <p className="text-[12px] text-[#34c759] font-medium mt-2">Necesitas ahorrar {fmt(perMonth)} al mes para llegar.</p>
+        )}
       </div>
 
       <div>
@@ -95,6 +142,20 @@ function GoalForm({ initial, action, pending, error, onCancel, submitLabel }: {
   )
 }
 
+/** Smart default for a contribution: the monthly effort to reach the deadline, plus round amounts. */
+function suggestedContributions(goal: Goal) {
+  const remaining = Math.max(0, goal.targetAmount - goal.currentAmount)
+  const out = new Set<number>()
+  if (goal.deadline) {
+    const months = Math.max(1, Math.round((new Date(goal.deadline).getTime() - Date.now()) / (30.44 * 86_400_000)))
+    const monthly = Math.ceil(remaining / months / 1000) * 1000
+    if (monthly > 0) out.add(monthly)
+  }
+  for (const a of [10_000, 50_000, 100_000]) if (a < remaining) out.add(a)
+  if (remaining > 0) out.add(remaining)
+  return [...out].slice(0, 4)
+}
+
 function ContributeDialog({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   const [amount, setAmount] = useState("")
   const [, startTransition] = useTransition()
@@ -115,6 +176,18 @@ function ContributeDialog({ goal, onClose }: { goal: Goal; onClose: () => void }
       <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-6 w-full max-w-xs shadow-2xl border border-black/[0.08] dark:border-white/[0.08] anim-pop-in">
         <h3 className="text-[17px] font-semibold text-[#1d1d1f] dark:text-white mb-1">Abonar a meta</h3>
         <p className="text-[13px] text-[#86868b] mb-4">{goal.name} · {fmt(goal.currentAmount)} de {fmt(goal.targetAmount)}</p>
+        <div className="flex flex-wrap gap-1.5 mb-2.5">
+          {suggestedContributions(goal).map(a => (
+            <button key={a} type="button" onClick={() => setAmount(String(a))}
+              className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  Number(amount) === a
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+              {fmt(a)}
+            </button>
+          ))}
+        </div>
         <input
           type="number" min="1" step="1" placeholder="Monto a abonar (CLP)"
           value={amount} onChange={e => setAmount(e.target.value)}

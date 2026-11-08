@@ -73,6 +73,8 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 type WithId = { id: string }
 
+export type SetupResult = { account: string | null; subscriptions: number; goal: string | null; budgets: number }
+
 export type TransactionSuggestions = {
   suggestions: { description: string; type: "INCOME" | "EXPENSE"; count: number; categoryId: string | null; accountId: string; amount: number }[]
   topCategory: { INCOME: string | null; EXPENSE: string | null }
@@ -96,6 +98,8 @@ export const api = {
     /** Direct download link (the browser handles the file). */
     exportUrl: `${BASE}/me/export`,
     remove: (body: In<typeof S.AccountDeletion>) => request<{ deleted: true }>("DELETE", "/me", body),
+    /** Applies the step-by-step signup (used after a Google/GitHub signup). */
+    setup: (body: In<typeof S.AccountSetup>) => post<SetupResult>("/me/setup", body),
   },
   auth: {
     register: (body: In<typeof S.Register> | FormData) => post<{ id: string; email: string }>("/auth/register", body as Body),

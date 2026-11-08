@@ -3,6 +3,7 @@ import { useRef, useActionState, useTransition, useState } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api/client"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import { CATEGORY_PRESETS } from "@/lib/suggestions"
 
 type Cat = { id: string; name: string; type: string; icon: string | null; color: string; isDefault: boolean; _count?: { transactions: number } }
 
@@ -13,12 +14,18 @@ const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e]
 const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1.5"
 const cardCls = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none"
 
-function CategoryForm({ initial, action, pending, error, onCancel, submitLabel }: {
+function CategoryForm({ initial, action, pending, error, onCancel, submitLabel, existing = [] }: {
   initial?: Cat; action: (fd: FormData) => void; pending: boolean
   error?: string; onCancel: () => void; submitLabel: string
+  /** Names the user already has, so presets only offer new ones. */
+  existing?: string[]
 }) {
   const [icon, setIcon] = useState(initial?.icon ?? "")
   const [color, setColor] = useState(initial?.color ?? "#6366f1")
+  const [name, setName] = useState(initial?.name ?? "")
+  const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE")
+  const taken = new Set(existing.map(n => n.toLowerCase()))
+  const presets = CATEGORY_PRESETS[type].filter(p => !taken.has(p.name.toLowerCase()))
 
   return (
     <form action={action} className="space-y-4">
@@ -26,7 +33,21 @@ function CategoryForm({ initial, action, pending, error, onCancel, submitLabel }
 
       <div>
         <label className={labelCls}>Nombre</label>
-        <input name="name" type="text" required placeholder="Ej: Supermercado, Netflix..." defaultValue={initial?.name ?? ""} className={inputCls} />
+        <input name="name" type="text" required placeholder="Ej: Supermercado, Netflix..." value={name} onChange={e => setName(e.target.value)} className={inputCls} />
+        {!initial && presets.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {presets.map(p => (
+              <button key={p.name} type="button" onClick={() => { setName(p.name); setIcon(p.icon); setColor(p.color) }}
+                className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  name === p.name
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+                {p.icon} {p.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {!initial && (
@@ -35,7 +56,7 @@ function CategoryForm({ initial, action, pending, error, onCancel, submitLabel }
           <div className="grid grid-cols-2 gap-2 p-1 bg-[#f5f5f7] dark:bg-white/[0.06] rounded-xl">
             {(["EXPENSE", "INCOME"] as const).map(t => (
               <label key={t} className="cursor-pointer">
-                <input type="radio" name="type" value={t} defaultChecked={t === "EXPENSE"} className="sr-only" />
+                <input type="radio" name="type" value={t} checked={type === t} onChange={() => setType(t)} className="sr-only" />
                 <span className="block text-center py-2 rounded-lg text-[13px] font-semibold text-[#86868b] has-[input:checked]:bg-white has-[input:checked]:dark:bg-white/[0.12] has-[input:checked]:text-[#1d1d1f] has-[input:checked]:dark:text-white transition-all">
                   {t === "EXPENSE" ? "Gasto" : "Ingreso"}
                 </span>
@@ -166,7 +187,7 @@ export default function CategoriesClient({ initialCats }: { initialCats: Cat[] }
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <CategoryForm action={addAction} pending={addPending} error={addState?.error} onCancel={() => addRef.current?.close()} submitLabel="Crear" />
+        <CategoryForm existing={initialCats.map(c => c.name)} action={addAction} pending={addPending} error={addState?.error} onCancel={() => addRef.current?.close()} submitLabel="Crear" />
       </dialog>
 
       {/* Edit dialog */}

@@ -137,6 +137,8 @@ const bud = await call("PUT", "/api/v1/budgets", { categoryId: food.id, month: 1
 check("set budget", bud.status === 200 && bud.data.amount === 50000, bud)
 const month = await call("GET", "/api/v1/budgets?month=11&year=2026")
 check("budget month shows budget", month.data?.budgetMap?.[food.id] === 50000, month.data?.budgetMap)
+const budClear = await call("PUT", "/api/v1/budgets", { categoryId: food.id, month: 11, year: 2026, amount: 0 })
+check("budget amount 0 removes it (cleanup)", budClear.status === 200 && budClear.data.amount === 0, budClear)
 
 const goal = await call("POST", "/api/v1/savings-goals", { name: "QA Viaje", targetAmount: 1000, currentAmount: "0" })
 check("create goal", goal.status === 201, goal)
@@ -175,7 +177,7 @@ check("malformed JSON → 400", badJson.status === 400)
 
 // ── Pilot features ──────────────────────────────────────────────────────────
 console.log("password reset")
-const rr1 = await call("POST", "/api/v1/auth/password-reset", { email: "nadie-existe@clarifi.test" })
+const rr1 = await call("POST", "/api/v1/auth/password-reset", { email: `nadie-${Date.now()}@example.test` })
 check("reset request for unknown email → 202 (no account enumeration)", rr1.status === 202 && rr1.data?.sent === true, rr1)
 const rr2 = await call("GET", "/api/v1/auth/password-reset?token=" + "x".repeat(43))
 check("reset link check: invalid token → valid false", rr2.status === 200 && rr2.data?.valid === false, rr2)
@@ -272,6 +274,37 @@ tmpStore(await fetch(`${BASE}/api/auth/callback/credentials`, {
   body: new URLSearchParams({ email: tmpEmail, password: "Borrar12345", csrfToken: tok3, callbackUrl: `${BASE}/dashboard` }),
 }))
 await del({ confirm: "ELIMINAR", password: "Borrar12345" })
+
+// ── Step-by-step signup: what the person built is saved with the account ──
+console.log("signup setup (throwaway user)")
+{
+  const jar = new Map()
+  const st = r => { for (const c of r.headers.getSetCookie?.() ?? []) { const [p] = c.split(";"); const i = p.indexOf("="); jar.set(p.slice(0, i), p.slice(i + 1)) } }
+  const ck = () => [...jar].map(([k, v]) => `${k}=${v}`).join("; ")
+  const as = async (method, path, body) => {
+    const r = await fetch(BASE + path, { method, headers: { cookie: ck(), "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+    return { status: r.status, ...(await r.json().catch(() => ({}))) }
+  }
+  const email = `qa-setup-${Date.now()}@example.test`, password = "QaSetup12345"
+  const setup = {
+    account: { name: "Cuenta corriente Santander", type: "CHECKING", bank: "Santander", balance: 450000 },
+    subscriptions: [{ name: "Netflix", amount: 9990, billingDay: 8 }, { name: "Spotify", amount: 5990 }],
+    goal: { name: "Vacaciones", targetAmount: 1000000 },
+    budgets: [{ category: "Alimentación", amount: 250000 }, { category: "No existe", amount: 1000 }],
+  }
+  const reg = await call("POST", "/api/v1/auth/register", { name: "QA Setup", email, password, setup })
+  check("register with setup → account, subscriptions, goal and budget", reg.status === 201 && reg.data?.setup?.account && reg.data.setup.subscriptions === 2 && reg.data.setup.goal && reg.data.setup.budgets === 1, reg)
+  const c = await fetch(`${BASE}/api/auth/csrf`); st(c)
+  const { csrfToken } = await c.json()
+  st(await fetch(`${BASE}/api/auth/callback/credentials`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", cookie: ck() }, body: new URLSearchParams({ email, password, csrfToken }) }))
+  const accs = await as("GET", "/api/v1/accounts")
+  check("setup account has the opening balance", accs.data?.length === 1 && accs.data[0].balance === 450000, accs.data)
+  const again = await as("POST", "/api/v1/me/setup", setup)
+  const subs = await as("GET", "/api/v1/subscriptions")
+  check("setup runs once (409, nothing duplicated)", again.status === 409 && subs.data?.length === 2, { again: again.status, subs: subs.data?.length })
+  check("invalid setup → 422", (await as("POST", "/api/v1/me/setup", { subscriptions: [{ name: "", amount: -1 }] })).status === 422)
+  check("cleanup: setup user deleted", (await as("DELETE", "/api/v1/me", { confirm: "ELIMINAR", password })).status === 200)
+}
 
 // ── Cleanup of what this run created (the test user itself stays) ──────────
 for (const id of [A.id, B.id, C.data.id]) await call("DELETE", `/api/v1/accounts/${id}`)

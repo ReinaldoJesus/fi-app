@@ -247,12 +247,23 @@ const strongPassword = z
   .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
   .regex(/[0-9]/, "Debe contener al menos un número")
 
+/** What the person builds in the step-by-step signup, applied once to the new user. */
+export const AccountSetup = z.object({
+  account: AccountCreate.optional(),
+  subscriptions: z.array(SubscriptionCreate).max(12, "Máximo 12 suscripciones").default([]),
+  goal: SavingsGoalCreate.optional(),
+  /** Monthly limits by default category name (e.g. "Alimentación"). */
+  budgets: z.array(z.object({ category: requiredText("La categoría", 60), amount: positiveMoney() })).max(12).default([]),
+})
+
 export const Register = z
   .object({
     name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres"),
     email,
     password: strongPassword,
     confirmPassword: z.string().optional(),
+    /** Optional: the first account, subscriptions, goal and budgets built during signup. */
+    setup: AccountSetup.optional(),
   })
   .refine(d => d.confirmPassword === undefined || d.password === d.confirmPassword, {
     message: "Las contraseñas no coinciden",

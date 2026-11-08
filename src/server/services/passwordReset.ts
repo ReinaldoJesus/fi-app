@@ -19,8 +19,8 @@ export async function requestPasswordReset(
   input: z.infer<typeof PasswordResetRequest>,
   ctx: { ip: string; origin: string },
 ) {
-  await assertRateLimit(`reset:ip:${ctx.ip}`, RULES.resetIp, "solicitudes")
-  await assertRateLimit(`reset:email:${input.email}`, RULES.resetEmail, "solicitudes para este email")
+  await assertRateLimit(`reset:ip:${ctx.ip}`, RULES.resetIp, "Demasiadas solicitudes")
+  await assertRateLimit(`reset:email:${input.email}`, RULES.resetEmail, "Demasiadas solicitudes para este email")
 
   const user = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true, name: true, password: true } })
   if (user) {

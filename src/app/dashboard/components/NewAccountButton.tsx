@@ -3,6 +3,7 @@ import { useRef, useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api/client"
 import { CURRENCIES } from "@/lib/fmt"
+import { BANKS as BANK_PRESETS, accountName } from "@/lib/suggestions"
 
 const ACCOUNT_TYPES = [
   { value: "CHECKING", label: "Cuenta corriente" }, { value: "SAVINGS", label: "Cuenta de ahorro" },
@@ -10,7 +11,7 @@ const ACCOUNT_TYPES = [
   { value: "INVESTMENT", label: "Inversiones" },
 ]
 const COLORS = ["#34c759", "#007aff", "#bf5af2", "#ff3b30", "#e63946", "#ff9500"]
-const BANKS = ["Santander", "BCI", "Banco de Chile", "Scotiabank", "BICE", "Itaú"]
+const BANKS = BANK_PRESETS.map(b => b.name)
 
 const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px]"
 const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1.5"
@@ -22,6 +23,18 @@ export default function NewAccountButton() {
   const [currency, setCurrency] = useState("CLP")
   const [bankInput, setBankInput] = useState("")
   const [showSugg, setShowSugg] = useState(false)
+  const [name, setName] = useState("")
+  const [nameTouched, setNameTouched] = useState(false)
+  const [color, setColor] = useState(COLORS[0])
+  // Smart default: "Cuenta corriente Santander" until the person types their own name.
+  const suggestedName = accountName(accountType, bankInput.trim() || null)
+  const shownName = nameTouched ? name : suggestedName
+  function pickBank(b: string) {
+    setBankInput(b)
+    setShowSugg(false)
+    const preset = BANK_PRESETS.find(p => p.name === b)
+    if (preset && COLORS.includes(preset.color)) setColor(preset.color)
+  }
 
   const [state, action, pending] = useActionState(async (_: unknown, formData: FormData) => {
     const result = await api.accounts.create(formData)
@@ -30,6 +43,8 @@ export default function NewAccountButton() {
       setAccountType("CHECKING")
       setCurrency("CLP")
       setBankInput("")
+      setName("")
+      setNameTouched(false)
       router.refresh()
     }
     return result
@@ -70,18 +85,29 @@ export default function NewAccountButton() {
               onBlur={() => setTimeout(() => setShowSugg(false), 150)}
               onFocus={() => setShowSugg(true)}
               placeholder="Ej: Santander, BCI..." className={inputCls} />
+            {!bankInput && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {BANK_PRESETS.slice(0, 6).map(b => (
+                  <button key={b.name} type="button" onClick={() => pickBank(b.name)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-medium bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12] transition-colors">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {showSugg && suggestions.length > 0 && (
               <ul className="absolute z-10 w-full mt-1 bg-white dark:bg-[#2c2c2e] border border-black/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden shadow-lg">
                 {suggestions.map((b) => (
                   <li key={b} className="px-3.5 py-2.5 text-[13px] text-[#1d1d1f] dark:text-white hover:bg-[#f5f5f7] dark:hover:bg-white/[0.06] cursor-pointer"
-                    onMouseDown={() => { setBankInput(b); setShowSugg(false) }}>{b}</li>
+                    onMouseDown={() => pickBank(b)}>{b}</li>
                 ))}
               </ul>
             )}
           </div>
 
           <div><label className={labelCls}>Nombre</label>
-            <input name="name" required placeholder="Ej: Cuenta Corriente" className={inputCls} /></div>
+            <input name="name" required placeholder="Ej: Cuenta Corriente" value={shownName}
+              onChange={e => { setNameTouched(true); setName(e.target.value) }} className={inputCls} /></div>
 
           <div><label className={labelCls}>Tipo</label>
             <select name="type" value={accountType} onChange={(e) => setAccountType(e.target.value)} className={inputCls}>
@@ -109,9 +135,9 @@ export default function NewAccountButton() {
           <div>
             <label className={labelCls}>Color</label>
             <div className="flex gap-2">
-              {COLORS.map((c, i) => (
+              {COLORS.map(c => (
                 <label key={c} className="cursor-pointer">
-                  <input type="radio" name="color" value={c} defaultChecked={i === 0} className="sr-only peer" />
+                  <input type="radio" name="color" value={c} checked={color === c} onChange={() => setColor(c)} className="sr-only peer" />
                   <span className="block w-7 h-7 rounded-full ring-2 ring-transparent peer-checked:ring-[#1d1d1f] dark:peer-checked:ring-white peer-checked:ring-offset-2 peer-checked:ring-offset-white dark:peer-checked:ring-offset-[#1c1c1e] transition-all"
                     style={{ backgroundColor: c }} />
                 </label>

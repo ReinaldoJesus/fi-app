@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react"
 import Sidebar from "@/components/Sidebar"
 import TopBar from "@/components/TopBar"
 import { OfflineBanner } from "@/components/ServiceWorker"
+import PendingSetup from "@/components/PendingSetup"
 import { BalanceVisibilityProvider } from "@/contexts/BalanceVisibility"
 import { getNotifications } from "@/server/services/reports"
 
@@ -34,6 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         />
         <div className="flex-1 min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
           <OfflineBanner />
+          <PendingSetup />
           <TopBar
             userName={session.user.name ?? null}
             userEmail={session.user.email ?? null}

@@ -64,10 +64,10 @@ export function minutesText(sec: number) {
   return m === 1 ? "1 minuto" : `${m} minutos`
 }
 
-/** Throws 429 when the key is over its limit. */
-export async function assertRateLimit(key: string, rule: RateRule, what = "intentos") {
+/** Throws 429 when the key is over its limit. `tooMany` is the full phrase, e.g. "Demasiadas solicitudes". */
+export async function assertRateLimit(key: string, rule: RateRule, tooMany = "Demasiados intentos") {
   const r = await hit(key, rule)
   if (!r.allowed) {
-    throw new ApiError(429, "rate_limited", `Demasiados ${what}. Inténtalo de nuevo en ${minutesText(r.retryAfterSec)}.`)
+    throw new ApiError(429, "rate_limited", `${tooMany}. Inténtalo de nuevo en ${minutesText(r.retryAfterSec)}.`)
   }
 }

@@ -19,8 +19,12 @@ export default function NewTransferButton({ accounts, variant = "button" }: { ac
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
   const today = new Date().toLocaleDateString("en-CA")
-  const [fromId, setFromId] = useState(accounts[0]?.id ?? "")
-  const [toId, setToId] = useState(accounts.length > 1 ? accounts[1].id : accounts[0]?.id ?? "")
+  // Smart default: from a checking/cash account to a savings one (the most common move).
+  const defaultFrom = accounts.find(a => a.type === "CHECKING") ?? accounts.find(a => a.type !== "CREDIT_CARD") ?? accounts[0]
+  const defaultTo = accounts.find(a => a.id !== defaultFrom?.id && (a.type === "SAVINGS" || a.type === "INVESTMENT"))
+    ?? accounts.find(a => a.id !== defaultFrom?.id)
+  const [fromId, setFromId] = useState(defaultFrom?.id ?? "")
+  const [toId, setToId] = useState(defaultTo?.id ?? defaultFrom?.id ?? "")
   const [amountStr, setAmountStr] = useState("")
 
   const fromAccount = accounts.find(a => a.id === fromId)
@@ -102,6 +106,28 @@ export default function NewTransferButton({ accounts, variant = "button" }: { ac
             <label className={labelCls}>Monto (CLP)</label>
             <input name="amount" type="number" min="1" step="1" required placeholder="0"
               value={amountStr} onChange={e => setAmountStr(e.target.value)} className={inputCls} />
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {[10_000, 50_000, 100_000].map(a => (
+                <button key={a} type="button" onClick={() => setAmountStr(String(a))}
+                  className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  amount === a
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+                  {fmt(a)}
+                </button>
+              ))}
+              {fromAccount && fromAccount.type !== "CREDIT_CARD" && Number(fromAccount.balance) > 0 && (
+                <button type="button" onClick={() => setAmountStr(String(Math.floor(Number(fromAccount.balance))))}
+                  className={`px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
+                  amount === Math.floor(Number(fromAccount.balance))
+                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    : "bg-[#f5f5f7] dark:bg-white/[0.06] text-[#1d1d1f] dark:text-white hover:bg-[#e8e8ed] dark:hover:bg-white/[0.12]"
+                }`}>
+                  Todo el saldo
+                </button>
+              )}
+            </div>
             {insufficientFunds && (
               <p className="text-[11px] text-[#ff9500] mt-1.5">
                 Saldo insuficiente · disponible {fmt(Number(fromAccount!.balance))}
@@ -111,7 +137,9 @@ export default function NewTransferButton({ accounts, variant = "button" }: { ac
 
           <div>
             <label className={labelCls}>Descripción (opcional)</label>
-            <input name="description" type="text" placeholder="Ej: Pago tarjeta, ahorro mensual..." className={inputCls} />
+            <input name="description" type="text" placeholder="Ej: Pago tarjeta, ahorro mensual..." key={toId}
+              defaultValue={accounts.find(a => a.id === toId)?.type === "CREDIT_CARD" ? "Pago tarjeta" : accounts.find(a => a.id === toId)?.type === "SAVINGS" ? "Ahorro mensual" : ""}
+              className={inputCls} />
           </div>
 
           <div>

@@ -7,7 +7,7 @@ import { assertRateLimit, clientIp, RULES } from "@/server/rateLimit"
 
 /** Browser-side errors (error boundaries, uncaught exceptions). Works signed in or out. */
 export const POST = withPublic(async ({ req }) => {
-  await assertRateLimit(`client-error:ip:${await clientIp()}`, RULES.clientErrorIp, "reportes")
+  await assertRateLimit(`client-error:ip:${await clientIp()}`, RULES.clientErrorIp, "Demasiados reportes")
   const input = ClientErrorReport.parse(await readJson(req))
   const session = await auth().catch(() => null)
   // Automated tests mark their reports so they're stored without emailing an alert.

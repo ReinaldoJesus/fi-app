@@ -76,6 +76,9 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/transactions/suggestions": {
     get: { tag: "Movimientos", summary: "Sugerencias para el formulario: descripciones frecuentes con su categoría, cuenta y monto habituales" },
   },
+  "/me/setup": {
+    post: { tag: "Perfil", summary: "Aplica lo armado en el registro paso a paso (cuenta, suscripciones, meta, presupuestos). Solo una vez: 409 si ya hay cuentas", body: S.AccountSetup },
+  },
   "/me/onboarding": {
     get: { tag: "Perfil", summary: "Primeros pasos y progreso (crear la cuenta ya cuenta como paso)" },
   },

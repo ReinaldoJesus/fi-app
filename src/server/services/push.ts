@@ -12,7 +12,7 @@ import { pruneErrorLogs } from "./monitoring"
 
 export type PushPayload = { title: string; body: string; url?: string; tag?: string }
 
-const publicKey = () => process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+const publicKey = () => process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() || undefined
 export const pushConfigured = () => !!(publicKey() && process.env.VAPID_PRIVATE_KEY)
 
 let vapidReady = false
@@ -20,9 +20,13 @@ function ensureVapid() {
   if (!pushConfigured()) throw new ApiError(503, "push_not_configured", "Las notificaciones push no están configuradas en el servidor")
   if (vapidReady) return
   // Contact for the push services: explicit VAPID_SUBJECT, else the production URL.
-  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  const subject = process.env.VAPID_SUBJECT || (host ? `https://${host}` : "https://localhost")
-  webpush.setVapidDetails(subject, publicKey()!, process.env.VAPID_PRIVATE_KEY!)
+  // A blank or malformed VAPID_SUBJECT (e.g. a stray space in the dashboard) falls back instead of breaking push.
+  const explicit = process.env.VAPID_SUBJECT?.trim()
+  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim().replace(/^https?:\/\//, "")
+  const subject = explicit && /^(https:\/\/\S+|mailto:\S+@\S+)$/.test(explicit)
+    ? explicit
+    : host ? `https://${host}` : "https://clarifi.vercel.app"
+  webpush.setVapidDetails(subject, publicKey()!.trim(), process.env.VAPID_PRIVATE_KEY!.trim())
   vapidReady = true
 }
 

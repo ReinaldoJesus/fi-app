@@ -31,7 +31,12 @@ export async function loginWithCredentials(_prev: { error: string } | undefined,
 }
 
 export async function signup(_prev: SignupState, formData: FormData): Promise<SignupState> {
-  const parsed = Register.safeParse(Object.fromEntries(formData))
+  const raw: Record<string, unknown> = Object.fromEntries(formData)
+  // The step-by-step signup sends what the person built as JSON in "setup".
+  if (typeof raw.setup === "string") {
+    try { raw.setup = raw.setup ? JSON.parse(raw.setup) : undefined } catch { raw.setup = undefined }
+  }
+  const parsed = Register.safeParse(raw)
   if (!parsed.success) {
     const errors: Record<string, string[]> = {}
     for (const issue of parsed.error.issues) (errors[String(issue.path[0])] ??= []).push(issue.message)
