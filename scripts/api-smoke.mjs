@@ -306,6 +306,41 @@ console.log("signup setup (throwaway user)")
   check("cleanup: setup user deleted", (await as("DELETE", "/api/v1/me", { confirm: "ELIMINAR", password })).status === 200)
 }
 
+// ── Apple Pay via iPhone Shortcuts (personal token) ────────────────────────
+console.log("\nshortcuts (personal token)")
+{
+  const tk = await call("POST", "/api/v1/me/tokens", { name: "QA iPhone" })
+  check("create token → shown once (clf_…)", tk.status === 201 && /^clf_/.test(tk.data?.token) && tk.data.prefix === tk.data.token.slice(0, 8), tk)
+  const list = await call("GET", "/api/v1/me/tokens")
+  check("list tokens never returns the token", list.data?.some(t => t.id === tk.data.id) && list.data.every(t => !("token" in t) && !("tokenHash" in t)), list.data)
+  const sc = async (body, { token = tk.data.token, text = false } = {}) => {
+    const r = await fetch(`${BASE}/api/v1/shortcuts/transaction${text ? "?format=text" : ""}`, {
+      method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body),
+    })
+    return { status: r.status, body: text ? await r.text() : await r.json().catch(() => ({})) }
+  }
+  check("no token → 401", (await sc({ amount: "1" }, { token: null })).status === 401)
+  check("unknown token → 401", (await sc({ amount: "1" }, { token: "clf_" + "x".repeat(32) })).status === 401)
+  const usedBefore = await balanceOf(C.data.id)
+  const pay = await sc({ amount: "$12.990", merchant: "QA Café Wallet", card: "QA Visa Crédito" })
+  check("payment → card picks the account, Wallet amount parsed", pay.status === 201 && pay.body.data?.account.id === C.data.id && pay.body.data.amount === 12990, pay)
+  check("payment moves the card balance", (await balanceOf(C.data.id)) === usedBefore - 12990, { before: usedBefore, after: await balanceOf(C.data.id) })
+  await call("POST", "/api/v1/transactions", { type: "EXPENSE", amount: 3000, accountId: A.id, categoryId: food.id, description: "QA Panadería" })
+  const known = await sc({ amount: "$2.500", merchant: "qa panaderia", card: "QA Corriente" })
+  check("same merchant as before → same category", known.status === 201 && known.body.data?.category?.id === food.id && known.body.data.account.id === A.id, known.body)
+  const txt = await sc({ amount: "4.990", merchant: "QA Texto" }, { text: true })
+  check("?format=text → message ready for the notification", txt.status === 201 && txt.body.startsWith("✓ Registrado:") && txt.body.includes("QA Texto"), txt)
+  const dry = await sc({ amount: "$1.000", merchant: "QA Dry", dryRun: true })
+  const dryTx = ((await call("GET", `/api/v1/transactions?accountId=${A.id}&limit=500`)).data?.items ?? []).filter(t => t.description === "QA Dry")
+  check("dryRun → nothing saved", dry.status === 201 && dry.body.data?.id === null && dry.body.data.message.startsWith("Así quedaría") && dryTx.length === 0, { dry: dry.body, dryTx })
+  const bad = await sc({ amount: "gratis" }, { text: true })
+  check("unreadable amount → readable text error", bad.status === 400 && bad.body.startsWith("✗ Clarifi:"), bad)
+  const used = (await call("GET", "/api/v1/me/tokens")).data.find(t => t.id === tk.data.id)
+  check("token records its last use", !!used?.lastUsedAt, used)
+  check("revoke token", (await call("DELETE", `/api/v1/me/tokens/${tk.data.id}`)).status === 200)
+  check("revoked token → 401", (await sc({ amount: "1" })).status === 401)
+}
+
 // ── Cleanup of what this run created (the test user itself stays) ──────────
 for (const id of [A.id, B.id, C.data.id]) await call("DELETE", `/api/v1/accounts/${id}`)
 await call("DELETE", `/api/v1/savings-goals/${goal.data.id}`)
