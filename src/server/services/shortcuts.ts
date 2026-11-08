@@ -8,6 +8,7 @@ import { createTransaction } from "./transactions"
 import { getTransactionSuggestions } from "./insights"
 import { ensureDefaultCategories } from "./categories"
 import { matchAccount, norm, parseLooseAmount, parseNotification } from "@/lib/wallet"
+import { pickCategory } from "@/lib/merchantCategories"
 
 /**
  * Records a payment sent by the iPhone Shortcuts "Transaction" automation
@@ -44,19 +45,19 @@ export async function recordShortcutTransaction(userId: string, raw: z.infer<typ
 
   const merchant = input.merchant?.trim() || undefined
   const m = merchant ? norm(merchant) : ""
-  // Same merchant as before → same category; otherwise the one used the most.
+  // 1) Same merchant as before → the category they chose (their correction always wins).
   const known = m
-    ? hints.suggestions.find(s => s.type === input.type && norm(s.description) === m)
-      ?? hints.suggestions.find(s => s.type === input.type && (norm(s.description).includes(m) || m.includes(norm(s.description))))
+    ? hints.suggestions.find(s => s.type === input.type && s.categoryId && norm(s.description) === m)
+      ?? hints.suggestions.find(s => s.type === input.type && s.categoryId && (norm(s.description).includes(m) || m.includes(norm(s.description))))
     : undefined
-  let categoryId: string | undefined = known?.categoryId ?? hints.topCategory[input.type] ?? undefined
+  let categoryId: string | undefined = known?.categoryId ?? undefined
   if (!categoryId) {
-    // New person or new merchant with no history: "Otros gastos" / "Otros ingresos", never uncategorised.
+    // 2) A known store (Jumbo → Supermercado/Alimentación, Copec → Transporte…).
+    // 3) Otherwise "Otros gastos" / "Otros ingresos": never uncategorised, never a random guess.
     await ensureDefaultCategories(userId)
-    const fallback = await prisma.category.findFirst({
-      where: { userId, type: input.type, name: { in: ["Otros gastos", "Otros ingresos"] } }, select: { id: true },
-    })
-    categoryId = fallback?.id
+    const cats = await prisma.category.findMany({ where: { userId, type: input.type }, select: { id: true, name: true } })
+    categoryId = (input.type === "EXPENSE" ? pickCategory(merchant, cats)?.id : undefined)
+      ?? cats.find(c => c.name === "Otros gastos" || c.name === "Otros ingresos")?.id
   }
 
   const tx = input.dryRun ? { id: null } : await createTransaction(userId, {
