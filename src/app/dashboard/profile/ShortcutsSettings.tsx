@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
 import { api, type ApiToken } from "@/lib/api/client"
-import ShortcutGuide from "./ShortcutGuide"
+import ShortcutGuide, { AiSetup } from "./ShortcutGuide"
 
 const card = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-6"
 
@@ -12,7 +12,7 @@ const card = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] 
  * device's storage until they finish it.
  */
 const GUIDE_KEY = "clarifi-shortcut-guide"
-type Guide = { token: string; step: number }
+type Guide = { token: string; step: number; mode?: "ai" | "steps" }
 const loadGuide = (): Guide | null => { try { return JSON.parse(localStorage.getItem(GUIDE_KEY) ?? "null") } catch { return null } }
 const saveGuide = (g: Guide | null) => { try { if (g) localStorage.setItem(GUIDE_KEY, JSON.stringify(g)); else localStorage.removeItem(GUIDE_KEY) } catch { /* ignore */ } }
 
@@ -79,6 +79,19 @@ export default function ShortcutsSettings() {
     setBusy(false)
   }
 
+  const finish = (
+    <div className="flex gap-2">
+      <button type="button" onClick={test} disabled={busy}
+        className="flex-1 py-2.5 rounded-xl bg-[#007aff] text-white text-[13px] font-semibold disabled:opacity-40">
+        Probar conexión
+      </button>
+      <button type="button" onClick={() => { update(null); setMsg(null) }}
+        className="flex-1 py-2.5 rounded-xl bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f] text-[13px] font-semibold">
+        Terminé
+      </button>
+    </div>
+  )
+
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", stiffness: 380, damping: 34 }}>
       <div className={card}>
@@ -98,20 +111,20 @@ export default function ShortcutsSettings() {
               <div className="px-3.5 py-2.5 rounded-xl bg-[#ff9500]/10 text-[12px] text-[#c93400] dark:text-[#ff9f0a]">
                 Tu URL personal es como una llave: quien la tenga puede registrar gastos en tu Clarifi. No la compartas. Si se filtra, revócala abajo.
               </div>
-              <ShortcutGuide url={url} step={guide.step} onStep={step => update({ ...guide, step })}
-                footer={
-                  <div className="flex gap-2">
-                    <button type="button" onClick={test} disabled={busy}
-                      className="flex-1 py-2.5 rounded-xl bg-[#007aff] text-white text-[13px] font-semibold disabled:opacity-40">
-                      Probar conexión
-                    </button>
-                    <button type="button" onClick={() => { update(null); setMsg(null) }}
-                      className="flex-1 py-2.5 rounded-xl bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f] text-[13px] font-semibold">
-                      Terminé
-                    </button>
-                  </div>
-                } />
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#f5f5f7] dark:bg-white/[0.06] text-[12px] font-semibold">
+                {([["ai", "✨ Con Apple Intelligence"], ["steps", "Paso a paso"]] as const).map(([m, label]) => (
+                  <button key={m} type="button" onClick={() => update({ ...guide, mode: m })}
+                    className={`relative py-2 rounded-lg ${(guide.mode ?? "ai") === m ? "text-[#1d1d1f] dark:text-white" : "text-[#86868b]"}`}>
+                    {(guide.mode ?? "ai") === m && <motion.span layoutId="shortcut-mode" className="absolute inset-0 rounded-lg bg-white dark:bg-[#3a3a3c] shadow-sm" />}
+                    <span className="relative">{label}</span>
+                  </button>
+                ))}
+              </div>
+              {(guide.mode ?? "ai") === "ai"
+                ? <AiSetup url={url} footer={finish} />
+                : <ShortcutGuide url={url} step={guide.step} onStep={step => update({ ...guide, step })} footer={finish} />}
             </motion.div>
+
           ) : (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
               <div className="grid grid-cols-3 gap-2 text-center text-[11px] text-[#86868b]">

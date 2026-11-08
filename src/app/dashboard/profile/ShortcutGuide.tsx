@@ -321,3 +321,64 @@ export default function ShortcutGuide({ url, step, onStep, footer }: {
   )
 }
 
+
+/* ─── Apple Intelligence: describe the shortcut and let the iPhone build it ─── */
+
+export const SHORTCUT_NAME = "Clarifi Apple Pay"
+
+/** The prompt to paste in Shortcuts on iPhones that can create shortcuts from a description. */
+export function shortcutPrompt(url: string) {
+  return `Crea un atajo llamado "${SHORTCUT_NAME}" que reciba como entrada una transacción de Wallet (Apple Pay) y haga esto:
+
+1. Acción "Obtener contenido de URL" con esta URL exacta:
+${url}
+2. En esa acción: Método POST y Cuerpo de la solicitud JSON con tres campos de texto:
+   - "amount": el importe de la transacción (Entrada del atajo → Importe)
+   - "merchant": el comerciante (Entrada del atajo → Comerciante)
+   - "card": la tarjeta usada (Entrada del atajo → Tarjeta o pase)
+3. Acción "Mostrar notificación" con el Contenido de URL que devolvió el paso 1.
+
+No agregues encabezados, preguntas ni otras acciones.
+
+Si puedes, crea también una automatización personal de tipo "Transacción" para todas mis tarjetas de Wallet, con "Ejecutar inmediatamente", que ejecute este atajo.`
+}
+
+export function AiSetup({ url, footer }: { url: string; footer?: ReactNode }) {
+  const [copied, setCopied] = useState(false)
+  const prompt = shortcutPrompt(url)
+  async function copy() {
+    try { await navigator.clipboard.writeText(prompt); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch { /* ignore */ }
+  }
+  const items: ReactNode[] = [
+    <>Copia el prompt (ya trae tu URL personal).</>,
+    <>Abre <b>Atajos</b>, toca <b>+</b> y pega el prompt donde te deja describir el atajo con Apple Intelligence.</>,
+    <>Revisa que el atajo <b>{SHORTCUT_NAME}</b> tenga tu URL, el método <b>POST</b> y los campos <b>amount</b>, <b>merchant</b> y <b>card</b>.</>,
+    <>Si no creó la automatización: <b>Automatización → + → Transacción</b>, elige tus tarjetas, marca <b>Ejecutar inmediatamente</b>, toca <b>Siguiente</b> y elige el atajo <b>{SHORTCUT_NAME}</b>.</>,
+  ]
+  return (
+    <div className="space-y-4">
+      <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-r from-[#ff9500] via-[#ff2d55] to-[#5e5ce6]">
+        <div className="rounded-[15px] bg-white dark:bg-[#1c1c1e] p-3.5">
+          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-sans text-[12px] leading-relaxed text-[#3a3a3c] dark:text-[#d1d1d6]">{prompt}</pre>
+        </div>
+      </div>
+      <motion.button type="button" onClick={copy} whileTap={{ scale: 0.97 }}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-[#ff9500] via-[#ff2d55] to-[#5e5ce6] text-white text-[14px] font-semibold">
+        {copied ? "¡Prompt copiado!" : "Copiar prompt"}
+      </motion.button>
+      <ol className="space-y-2.5">
+        {items.map((t, i) => (
+          <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.06 * i }} className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#34c759] text-white text-[12px] font-semibold flex items-center justify-center">{i + 1}</span>
+            <p className="min-w-0 text-[13px] leading-relaxed text-[#3a3a3c] dark:text-[#d1d1d6]">{t}</p>
+          </motion.li>
+        ))}
+      </ol>
+      <p className="text-[11px] text-[#86868b]">
+        Crear atajos describiéndolos requiere un iPhone con Apple Intelligence. Si tu iPhone no lo ofrece o el atajo queda distinto, usa la guía paso a paso.
+      </p>
+      {footer}
+      <a href="shortcuts://" className="block text-center text-[12px] font-medium text-[#007aff]">Abrir la app Atajos ↗</a>
+    </div>
+  )
+}
