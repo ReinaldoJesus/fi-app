@@ -182,6 +182,25 @@ export async function deleteTransaction(userId: string, id: string) {
   return { id }
 }
 
+/**
+ * Deletes several movements in one database transaction and reverts their effect
+ * on every balance. Ids that are not this person's are ignored (never 403-leaks),
+ * so the answer says how many were actually deleted.
+ */
+export async function deleteTransactions(userId: string, ids: string[]) {
+  const txs = await prisma.transaction.findMany({
+    where: { userId, id: { in: [...new Set(ids)] } },
+    select: { id: true, type: true, amount: true, accountId: true, toAccountId: true },
+  })
+  if (!txs.length) throw notFound("Movimientos")
+  const effects = txs.flatMap(t => balanceEffects({ type: t.type, amount: num(t.amount), accountId: t.accountId, toAccountId: t.toAccountId }))
+  await prisma.$transaction([
+    prisma.transaction.deleteMany({ where: { userId, id: { in: txs.map(t => t.id) } } }),
+    ...balanceOps(effects.map(e => ({ ...e, delta: -e.delta }))),
+  ])
+  return { deleted: txs.length }
+}
+
 export async function importTransactions(userId: string, input: z.infer<typeof TransactionImport>) {
   const { rows } = input
   await assertAccounts(userId, rows.map(r => r.accountId))
@@ -211,9 +230,9 @@ export async function getTransactionsOverview(userId: string) {
   const [transactions, accounts, categories, budgets, monthTxs] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId, date: { gte: twoYearsAgo } },
-      orderBy: { date: "desc" },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       select: {
-        id: true, amount: true, type: true, description: true, notes: true, date: true,
+        id: true, amount: true, type: true, description: true, notes: true, date: true, createdAt: true,
         category: { select: { id: true, name: true, color: true, icon: true } },
         account: { select: { id: true, name: true } },
         receipt: { select: { id: true } },
@@ -246,7 +265,7 @@ export async function getTransactionsOverview(userId: string) {
   }
 
   return {
-    transactions: transactions.map(({ receipt, ...t }) => ({ ...t, amount: num(t.amount), date: t.date.toISOString(), hasReceipt: !!receipt })),
+    transactions: transactions.map(({ receipt, ...t }) => ({ ...t, amount: num(t.amount), date: t.date.toISOString(), createdAt: t.createdAt.toISOString(), hasReceipt: !!receipt })),
     accounts: accounts.map(a => ({ ...a, balance: num(a.balance) })),
     categories,
     budgetStatus,

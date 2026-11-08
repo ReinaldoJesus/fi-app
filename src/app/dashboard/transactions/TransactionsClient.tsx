@@ -10,6 +10,7 @@ import ConfirmDialog from "@/components/ConfirmDialog"
 
 type Tx = {
   id: string; amount: number; type: string; description: string | null; notes: string | null; date: string
+  createdAt?: string
   category: { id: string; name: string; color: string; icon: string | null } | null
   account: { id: string; name: string }
   hasReceipt?: boolean
@@ -194,6 +195,26 @@ export default function TransactionsClient({
     editRef.current?.showModal()
   }
 
+  /* ─── Several at once: select mode ──────────────────────────────────────── */
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmBulk, setConfirmBulk] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkMsg, setBulkMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const toggle = (id: string) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  function stopSelecting() { setSelecting(false); setSelected(new Set()) }
+
+  async function handleBulkDelete() {
+    const ids = [...selected]
+    setConfirmBulk(false); setBulkDeleting(true); setBulkMsg(null)
+    const r = await api.transactions.removeMany(ids)
+    setBulkDeleting(false)
+    if (!r.ok) { setBulkMsg({ ok: false, text: r.error }); return }
+    setBulkMsg({ ok: true, text: `${r.data.deleted} movimiento${r.data.deleted === 1 ? "" : "s"} eliminado${r.data.deleted === 1 ? "" : "s"}. Los saldos ya están ajustados.` })
+    stopSelecting()
+    router.refresh()
+  }
+
   function handleDelete(id: string) {
     setDeletingId(id)
     startTransition(async () => {
@@ -262,6 +283,13 @@ export default function TransactionsClient({
   const totalIncome = filtered.filter(t => t.type === "INCOME").reduce((s, t) => s + t.amount, 0)
   const totalExpense = filtered.filter(t => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0)
   const grouped = groupByDate(filtered)
+  const selectedTotal = filtered.filter(t => selected.has(t.id)).reduce((s, t) => s + t.amount, 0)
+  const allSelected = filtered.length > 0 && filtered.every(t => selected.has(t.id))
+  // Paid with the phone in the last 48 h: shown on top, since a bank import with later
+  // posting dates can push them down the date-sorted list.
+  const [now] = useState(() => Date.now())
+  const autoSource = (t: Tx) => (t.notes?.startsWith("Apple Pay") ? "Apple Pay" : t.notes?.startsWith("Android") ? "Android" : null)
+  const freshAuto = initialTransactions.filter(t => autoSource(t) && t.createdAt && now - new Date(t.createdAt).getTime() < 48 * 3600_000).slice(0, 3)
   const editCategories = categories.filter(c => c.type === (editing?.type ?? "EXPENSE"))
   const hasFilters = search || filterType !== "ALL" || filterAccount || filterCategory || filterMonth
 
@@ -348,13 +376,44 @@ export default function TransactionsClient({
             {categories.map(c => <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ` : ""}{c.name}</option>)}
           </select>
         </div>
-        {hasFilters && (
-          <button onClick={() => { setSearch(""); setFilterType("ALL"); setFilterAccount(""); setFilterCategory(""); setFilterMonth("") }}
-            className="text-[12px] text-[#007aff] font-medium">
-            Limpiar filtros · {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+        <div className="flex items-center justify-between gap-3">
+          {hasFilters ? (
+            <button onClick={() => { setSearch(""); setFilterType("ALL"); setFilterAccount(""); setFilterCategory(""); setFilterMonth("") }}
+              className="text-[12px] text-[#007aff] font-medium">
+              Limpiar filtros · {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+            </button>
+          ) : <span />}
+          <button onClick={() => (selecting ? stopSelecting() : (setSelecting(true), setBulkMsg(null)))}
+            className="text-[12px] font-semibold text-[#007aff] hover:opacity-70">
+            {selecting ? "Cancelar" : "Seleccionar varios"}
           </button>
+        </div>
+        {selecting && (
+          <p className="text-[12px] text-[#86868b]">
+            Toca los movimientos que quieres eliminar. Para borrar un mes entero, elige el mes arriba y toca <b>Seleccionar todos</b>.
+          </p>
         )}
       </div>
+
+      {bulkMsg && (
+        <p className={`mb-4 px-4 py-3 rounded-xl text-[13px] ${bulkMsg.ok ? "bg-[#34c759]/10 text-[#248a3d] dark:text-[#30d158]" : "bg-[#ff3b30]/10 text-[#ff3b30]"}`}>{bulkMsg.text}</p>
+      )}
+
+      {freshAuto.length > 0 && !selecting && (
+        <div className="mb-5 rounded-2xl border border-[#007aff]/25 bg-[#007aff]/[0.06] px-4 py-3">
+          <p className="text-[11px] font-semibold text-[#007aff] uppercase tracking-wider mb-1.5">Registrados automáticamente</p>
+          <ul className="space-y-1">
+            {freshAuto.map(t => (
+              <li key={t.id} className="flex items-center justify-between gap-3 text-[13px]">
+                <span className="min-w-0 truncate text-[#1d1d1f] dark:text-white">
+                  {t.description ?? "Pago"} <span className="text-[#86868b]">· {autoSource(t)} · {new Date(t.date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}</span>
+                </span>
+                <span className="flex-shrink-0 whitespace-nowrap font-semibold tabular-nums text-[#1d1d1f] dark:text-white">{t.type === "INCOME" ? "+" : "−"}{fmt(t.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Transaction list */}
       {filtered.length === 0 ? (
@@ -368,7 +427,15 @@ export default function TransactionsClient({
               <p className="text-[11px] font-semibold text-[#86868b] mb-2 px-1 uppercase tracking-wider">{dateLabel}</p>
               <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
                 {txs.map(t => (
-                  <div key={t.id} className={`flex items-center gap-3.5 px-4 py-3.5 transition-opacity ${deletingId === t.id ? "opacity-40" : ""}`}>
+                  <div key={t.id}
+                    onClick={selecting ? () => toggle(t.id) : undefined}
+                    role={selecting ? "checkbox" : undefined} aria-checked={selecting ? selected.has(t.id) : undefined}
+                    className={`flex items-center gap-3.5 px-4 py-3.5 transition-all ${deletingId === t.id ? "opacity-40" : ""} ${selecting ? "cursor-pointer select-none" : ""} ${selecting && selected.has(t.id) ? "bg-[#007aff]/[0.06]" : ""}`}>
+                    {selecting && (
+                      <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected.has(t.id) ? "bg-[#007aff] border-[#007aff] text-white" : "border-[#c7c7cc] dark:border-[#48484a]"}`}>
+                        {selected.has(t.id) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      </span>
+                    )}
                     {t.category?.icon ? (
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[15px] flex-shrink-0"
                         style={{ backgroundColor: t.category.color ? `${t.category.color}18` : undefined }}>
@@ -408,10 +475,10 @@ export default function TransactionsClient({
                         </a>
                       )}
                     </div>
-                    <span className={`text-[13px] font-semibold tabular-nums flex-shrink-0 ${t.type === "INCOME" ? "text-[#34c759]" : "text-[#1d1d1f] dark:text-white"}`}>
+                    <span className={`text-[13px] font-semibold tabular-nums flex-shrink-0 whitespace-nowrap ${t.type === "INCOME" ? "text-[#34c759]" : "text-[#1d1d1f] dark:text-white"}`}>
                       {t.type === "INCOME" ? "+" : t.type === "TRANSFER" ? "" : "−"}{fmt(t.amount)}
                     </span>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className={`items-center gap-1 flex-shrink-0 ${selecting ? "hidden" : "flex"}`}>
                       <button onClick={() => openEdit(t)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white hover:bg-[#f5f5f7] dark:hover:bg-white/[0.08] transition-all">
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -436,6 +503,33 @@ export default function TransactionsClient({
       <p className="text-center text-[11px] text-[#86868b] mt-5">
         Mostrando {filtered.length} de {initialTransactions.length} transacciones
       </p>
+
+      {selecting && (
+        <div className="fixed inset-x-0 z-40 px-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6 lg:left-64">
+          <div className="max-w-4xl mx-auto flex items-center gap-2 rounded-2xl bg-[#1d1d1f] dark:bg-[#2c2c2e] text-white px-3 py-2.5 shadow-[0_12px_30px_rgba(0,0,0,0.3)]">
+            <button onClick={() => setSelected(allSelected ? new Set() : new Set(filtered.map(t => t.id)))}
+              className="px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-[#64d2ff] hover:bg-white/10 whitespace-nowrap">
+              {allSelected ? "Quitar todos" : `Seleccionar todos (${filtered.length})`}
+            </button>
+            <span className="flex-1 min-w-0 text-[12px] text-white/70 truncate text-right">
+              {selected.size > 0 ? `${selected.size} · ${fmt(selectedTotal)}` : "Nada elegido"}
+            </span>
+            <button onClick={() => setConfirmBulk(true)} disabled={!selected.size || bulkDeleting}
+              className="px-3.5 py-2 rounded-xl bg-[#ff3b30] text-white text-[13px] font-semibold disabled:opacity-40 whitespace-nowrap">
+              {bulkDeleting ? "Eliminando…" : "Eliminar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmBulk && (
+        <ConfirmDialog
+          title={`Eliminar ${selected.size} movimiento${selected.size === 1 ? "" : "s"}`}
+          message={`Se eliminarán ${selected.size} movimiento${selected.size === 1 ? "" : "s"} y los saldos de tus cuentas se ajustarán. Esta acción no se puede deshacer.`}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setConfirmBulk(false)}
+        />
+      )}
 
       {confirmDeleteTx && (
         <ConfirmDialog

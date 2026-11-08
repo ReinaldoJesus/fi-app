@@ -67,6 +67,9 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
     get: { tag: "Movimientos", summary: "Lista movimientos con filtros y paginación", query: S.TransactionListQuery },
     post: { tag: "Movimientos", summary: "Registra un ingreso o gasto", body: S.TransactionCreate, status: 201 },
   },
+  "/transactions/bulk-delete": {
+    post: { tag: "Movimientos", summary: "Elimina varios movimientos a la vez (p. ej. un mes entero) y revierte los saldos", body: S.TransactionBulkDelete },
+  },
   "/transactions/{id}": {
     get: { tag: "Movimientos", summary: "Obtiene un movimiento" },
     patch: { tag: "Movimientos", summary: "Edita un movimiento (recalcula saldos)", body: S.TransactionUpdate },

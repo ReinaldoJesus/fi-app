@@ -92,6 +92,11 @@ export const TransactionUpdate = z.object({
   date: z.preprocess(blankToUndefined, dateInput.optional()),
 })
 
+/** Several movements at once (e.g. a whole month); balances are reverted. */
+export const TransactionBulkDelete = z.object({
+  ids: z.array(z.string().min(1)).min(1, "Elige al menos un movimiento").max(1000, "Máximo 1000 movimientos a la vez"),
+})
+
 export const TransactionImport = z.object({
   rows: z
     .array(

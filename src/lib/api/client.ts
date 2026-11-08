@@ -139,6 +139,8 @@ export const api = {
     create: (body: In<typeof S.TransactionCreate> | FormData) => post<WithId>("/transactions", body as Body),
     update: (id: string, body: In<typeof S.TransactionUpdate> | FormData) => patch<WithId>(`/transactions/${id}`, body as Body),
     remove: (id: string) => del<WithId>(`/transactions/${id}`),
+    /** Several at once (e.g. a whole month); balances are reverted. */
+    removeMany: (ids: string[]) => post<{ deleted: number }>("/transactions/bulk-delete", { ids }),
     import: (rows: In<typeof S.TransactionImport>["rows"]) => post<{ imported: number }>("/transactions/import", { rows }),
     suggestions: () => get<TransactionSuggestions>("/transactions/suggestions"),
     /** URL of the receipt image (owner-only; usable in <img src>). */

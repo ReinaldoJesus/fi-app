@@ -350,6 +350,22 @@ console.log("\nshortcuts (personal token)")
   check("revoked token → 401", (await sc({ amount: "1" })).status === 401)
 }
 
+// ── Delete several movements at once (e.g. a whole month) ──────────────────
+console.log("\nbulk delete")
+{
+  const before = await balanceOf(A.id)
+  const made = []
+  for (const [type, amount] of [["EXPENSE", 1000], ["EXPENSE", 2500], ["INCOME", 700]]) {
+    made.push((await call("POST", "/api/v1/transactions", { type, amount, accountId: A.id, categoryId: type === "EXPENSE" ? food.id : incomeCat.id, description: "QA bulk", date: "2026-10-15" })).data.id)
+  }
+  check("bulk setup moved the balance", (await balanceOf(A.id)) === before - 1000 - 2500 + 700)
+  const del = await call("POST", "/api/v1/transactions/bulk-delete", { ids: [...made, "someone-elses-tx"] })
+  check("bulk delete → only own movements, count returned", del.status === 200 && del.data?.deleted === 3, del)
+  check("bulk delete reverts every balance", (await balanceOf(A.id)) === before, { before, after: await balanceOf(A.id) })
+  check("bulk delete with nothing of yours → 404", (await call("POST", "/api/v1/transactions/bulk-delete", { ids: made })).status === 404)
+  check("bulk delete with an empty list → 422", (await call("POST", "/api/v1/transactions/bulk-delete", { ids: [] })).status === 422)
+}
+
 // ── Cleanup of what this run created (the test user itself stays) ──────────
 for (const id of [A.id, B.id, C.data.id]) await call("DELETE", `/api/v1/accounts/${id}`)
 await call("DELETE", `/api/v1/savings-goals/${goal.data.id}`)

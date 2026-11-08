@@ -117,17 +117,19 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
       </section>
 
       {/* Statement totals */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Two tiles on phones (the count is already in the statement header), three from sm up.
+          Amounts never wrap: the "−" stays with the number and the size follows the screen. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           { label: "Abonos", value: `+${fmt(totalIn)}`, cls: "text-[#34c759]" },
           { label: "Cargos", value: `−${fmt(totalOut)}`, cls: "text-[#ff3b30]" },
           { label: "Movimientos", value: String(transactions.length), cls: "text-[#1d1d1f] dark:text-white", plain: true },
         ].map(s => (
-          <div key={s.label} className={`${card} px-4 py-3.5`}>
+          <div key={s.label} className={`${card} px-4 py-3.5 min-w-0 ${s.plain ? "hidden sm:block" : ""}`}>
             <p className="text-[10px] text-[#86868b] font-semibold uppercase tracking-[0.08em]">{s.label}</p>
             {s.plain
               ? <p className={`mt-1 text-[16px] font-semibold tabular-nums ${s.cls}`}>{s.value}</p>
-              : <PrivateAmount value={s.value} className={`block mt-1 text-[16px] font-semibold tabular-nums ${s.cls}`} />}
+              : <PrivateAmount value={s.value} className={`block mt-1 whitespace-nowrap overflow-hidden text-ellipsis text-[clamp(14px,4.4vw,18px)] font-semibold tabular-nums ${s.cls}`} />}
           </div>
         ))}
       </div>

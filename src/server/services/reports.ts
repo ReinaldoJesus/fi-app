@@ -21,7 +21,9 @@ export async function getSummary(userId: string) {
     }),
     prisma.transaction.findMany({
       where: { userId },
-      orderBy: { date: "desc" },
+      // The ones recorded last (Apple Pay, Android, by hand), not the latest dates: a bank
+      // import can carry next Monday's posting date and bury them.
+      orderBy: [{ createdAt: "desc" }, { date: "desc" }],
       take: 5,
       select: {
         id: true, amount: true, type: true, description: true, date: true,

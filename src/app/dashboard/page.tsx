@@ -321,7 +321,7 @@ export default async function DashboardPage() {
             <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
               <div>
                 <h2 className={sectionTitle}>Últimos movimientos</h2>
-                <p className="text-[12px] text-[#86868b]">Todas tus cuentas</p>
+                <p className="text-[12px] text-[#86868b]">Los últimos que registraste</p>
               </div>
               <Link href="/dashboard/transactions" className={linkAction}>Ver cartola →</Link>
             </div>

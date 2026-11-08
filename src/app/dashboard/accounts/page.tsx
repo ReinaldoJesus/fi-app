@@ -167,13 +167,13 @@ export default async function AccountsPage() {
                         </p>
                       </div>
                     </Link>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[10px] text-[#86868b] font-semibold uppercase tracking-wide">Saldo</p>
-                      <PrivateAmount value={fmtCurrency(bal, cur)} className={`text-[15px] font-semibold tabular-nums ${bal < 0 ? "text-[#ff3b30]" : "text-[#1d1d1f] dark:text-white"}`} />
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <ReconcileButton accountId={acc.id} currentBalance={bal} />
-                      <AccountDeleteButton accountId={acc.id} accountName={acc.name} txCount={acc._count.transactions} />
+                    {/* Balance with its actions underneath, so on narrow phones the name keeps its room. */}
+                    <div className="flex flex-col items-end flex-shrink-0">
+                      <PrivateAmount value={fmtCurrency(bal, cur)} className={`whitespace-nowrap text-[clamp(13px,4vw,15px)] font-semibold tabular-nums ${bal < 0 ? "text-[#ff3b30]" : "text-[#1d1d1f] dark:text-white"}`} />
+                      <div className="flex items-center gap-0.5 -mr-1.5 mt-0.5">
+                        <ReconcileButton accountId={acc.id} currentBalance={bal} />
+                        <AccountDeleteButton accountId={acc.id} accountName={acc.name} txCount={acc._count.transactions} />
+                      </div>
                     </div>
                   </div>
                 )
