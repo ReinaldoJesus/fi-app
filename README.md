@@ -39,6 +39,16 @@ npm run test:api     # prueba end-to-end de /api/v1 contra el servidor de desarr
 
 `npm run test:api [baseUrl]` necesita `TEST_USER_EMAIL` y `TEST_USER_PASSWORD` en `.env.local`; si esa cuenta no existe, la crea. Usa por defecto `http://localhost:3001`.
 
+### Base de datos de desarrollo
+
+Local nunca usa la base de producción. En Neon, la base de desarrollo es una rama (`dev`) del proyecto:
+
+1. Neon → **Branches** → **New branch**, nombre `dev`, padre `main`.
+2. Copia la cadena de conexión de esa rama y ponla como `DATABASE_URL` en `.env.local`.
+3. `npm run db:dev -- --reset` deja la rama vacía con el esquema actual (o `npm run db:dev` para solo aplicar migraciones pendientes).
+
+`.env.local` guarda `PROD_DB_HOST` (el host de producción, no es secreto): `db:dev` y `test:api` se niegan a correr si `DATABASE_URL` apunta ahí, y el servidor local avisa en la consola.
+
 ## Deploy
 
 Vercel publica automáticamente cada push a `main`. El script `vercel-build` corre `prisma migrate deploy` antes del build, así que las migraciones de `prisma/migrations` se aplican solas; si una falla, el deploy se detiene. Para aplicarlas a mano: `npm run db:migrate`.

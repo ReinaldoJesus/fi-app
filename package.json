@@ -10,7 +10,8 @@
     "db:migrate": "prisma migrate deploy",
     "test:api": "node scripts/api-smoke.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:dev": "node scripts/db-dev.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

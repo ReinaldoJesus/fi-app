@@ -10,6 +10,18 @@ const env = Object.fromEntries(
 const EMAIL = env.TEST_USER_EMAIL, PASSWORD = env.TEST_USER_PASSWORD
 if (!EMAIL || !PASSWORD) throw new Error("Missing TEST_USER_EMAIL/TEST_USER_PASSWORD in .env.local")
 
+// A local server must use the dev database: these tests create and delete data.
+// (Pass ALLOW_PROD_DB=1 to override on purpose.)
+if (/^http:\/\/(localhost|127\.0\.0\.1)/.test(BASE) && !process.env.ALLOW_PROD_DB) {
+  const raw = fs.readFileSync(".env.local", "utf8")
+  const get = k => raw.match(new RegExp(`^${k}=["']?([^"'\\r\\n]+)`, "m"))?.[1]
+  const host = u => { try { return new URL(u).hostname.replace("-pooler", "") } catch { return "" } }
+  if (get("PROD_DB_HOST") && host(get("DATABASE_URL")) === get("PROD_DB_HOST")) {
+    console.error("✗ .env.local apunta a la base de PRODUCCIÓN: las pruebas no corren ahí. Usa la rama dev de Neon (npm run db:dev).")
+    process.exit(1)
+  }
+}
+
 const jar = new Map()
 function storeCookies(res) {
   for (const c of res.headers.getSetCookie?.() ?? []) {
