@@ -88,6 +88,9 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/me/tokens/{id}": {
     delete: { tag: "Perfil", summary: "Revoca un token: las automatizaciones que lo usan dejan de funcionar" },
   },
+  "/shortcuts/{token}": {
+    post: { tag: "Automatizaciones", summary: "URL personal para Atajos: el token va en la ruta (sin encabezados) y responde texto listo para la notificación", body: S.ShortcutTransaction, status: 201, public: true },
+  },
   "/shortcuts/transaction": {
     post: { tag: "Automatizaciones", summary: "Registra un pago de Apple Pay enviado por Atajos del iPhone (elige cuenta por la tarjeta y categoría por el comercio)", body: S.ShortcutTransaction, status: 201, token: true },
   },
@@ -198,7 +201,7 @@ export function buildOpenApi(serverUrl: string) {
         summary: op!.summary,
         ...(op!.public ? { security: [] } : op!.token ? { security: [{ token: [] }] } : {}),
         parameters: [
-          ...(path.includes("{id}") ? [{ name: "id", in: "path", required: true, schema: { type: "string" } }] : []),
+          ...[...path.matchAll(/\{(\w+)\}/g)].map(m => ({ name: m[1], in: "path", required: true, schema: { type: "string" } })),
           ...(op!.query ? queryParams(op!.query) : []),
         ],
         ...(op!.body

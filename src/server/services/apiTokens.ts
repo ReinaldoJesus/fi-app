@@ -42,9 +42,14 @@ export async function revokeApiToken(userId: string, id: string) {
 
 /** Resolves `Authorization: Bearer clf_…` to its user; 401 for anything else. */
 export async function userFromBearer(req: Request): Promise<string> {
-  const m = req.headers.get("authorization")?.match(/^Bearer\s+(clf_[A-Za-z0-9_-]{20,})\s*$/i)
-  if (!m) throw unauthorized()
-  const row = await prisma.apiToken.findUnique({ where: { tokenHash: hash(m[1]) }, select: { id: true, userId: true } })
+  const m = req.headers.get("authorization")?.match(/^Bearer\s+(\S+)\s*$/i)
+  return userFromToken(m?.[1])
+}
+
+/** Resolves a personal token (from the header or the personal URL) to its user. */
+export async function userFromToken(token: string | undefined | null): Promise<string> {
+  if (!token || !/^clf_[A-Za-z0-9_-]{20,}$/.test(token)) throw unauthorized()
+  const row = await prisma.apiToken.findUnique({ where: { tokenHash: hash(token) }, select: { id: true, userId: true } })
   if (!row) throw unauthorized()
   await assertRateLimit(`token:use:${row.id}`, RULES.shortcutToken, "Demasiados movimientos seguidos")
   await prisma.apiToken.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })

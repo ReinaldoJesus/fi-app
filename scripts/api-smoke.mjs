@@ -337,7 +337,12 @@ console.log("\nshortcuts (personal token)")
   check("unreadable amount → readable text error", bad.status === 400 && bad.body.startsWith("✗ Clarifi:"), bad)
   const used = (await call("GET", "/api/v1/me/tokens")).data.find(t => t.id === tk.data.id)
   check("token records its last use", !!used?.lastUsedAt, used)
-  check("revoke token", (await call("DELETE", `/api/v1/me/tokens/${tk.data.id}`)).status === 200)
+  const personal = await fetch(`${BASE}/api/v1/shortcuts/${tk.data.token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ amount: "$1.500", merchant: "QA URL personal", dryRun: true }) })
+  const personalText = await personal.text()
+  check("personal URL (token in the path) → plain text, no headers needed", personal.status === 201 && personalText.startsWith("Así quedaría: $1.500"), { status: personal.status, personalText })
+  const wrongUrl = await fetch(`${BASE}/api/v1/shortcuts/clf_${"y".repeat(32)}`, { method: "POST", body: "{}" })
+  check("personal URL with a wrong token → 401 as readable text", wrongUrl.status === 401 && (await wrongUrl.text()).startsWith("✗ Clarifi:"))
+  check("revoke token",(await call("DELETE", `/api/v1/me/tokens/${tk.data.id}`)).status === 200)
   check("revoked token → 401", (await sc({ amount: "1" })).status === 401)
 }
 
