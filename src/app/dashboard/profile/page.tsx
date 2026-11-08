@@ -19,6 +19,7 @@ export default async function ProfilePage() {
         notifBudget: user?.notifBudget ?? true,
         hideAmountsOnStart: user?.hideAmountsOnStart ?? false,
         defaultAccountId: user?.defaultAccountId ?? null,
+        country: user?.country ?? null,
       }}
       accounts={accounts}
       hasPassword={user.hasPassword}

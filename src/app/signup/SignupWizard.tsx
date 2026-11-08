@@ -7,9 +7,11 @@ import { LoadingScreen } from "@/components/BrandLoader"
 import SubmitOverlay from "@/components/SubmitOverlay"
 import { signup, loginWithGitHub, loginWithGoogle } from "@/app/actions/auth"
 import {
-  ACCOUNT_TYPES, BANKS, BUDGET_PRESETS, GOAL_AMOUNTS, GOAL_DEADLINES, GOAL_PRESETS, POPULAR_SUBSCRIPTIONS,
-  accountName, fmtCLP, fmtShort, monthsFromNow, type AccountTypeValue,
+  ACCOUNT_TYPES, BUDGET_PRESETS, GOAL_AMOUNTS, GOAL_DEADLINES, GOAL_PRESETS, POPULAR_SUBSCRIPTIONS,
+  accountName, monthsFromNow, type AccountTypeValue,
 } from "@/lib/suggestions"
+import { COUNTRIES, countryOf, currencySymbol, fmtShortIn, guessCountry, localAmount, roundUp, type Country } from "@/lib/countries"
+import { fmtCurrency } from "@/lib/fmt"
 import { SETUP_DRAFT_KEY, type SetupDraft } from "@/components/PendingSetup"
 
 /* ─── Draft (everything except the password survives a reload) ─────────────── */
@@ -17,6 +19,7 @@ import { SETUP_DRAFT_KEY, type SetupDraft } from "@/components/PendingSetup"
 type Sub = { name: string; icon: string; category: string; amount: string }
 type Draft = {
   name: string
+  country: string
   account: { type: AccountTypeValue; bank: string; balance: string; creditLimit: string; skip: boolean }
   subs: Sub[]
   goal: { name: string; icon: string; color: string; target: string; months: number | null; skip: boolean }
@@ -25,6 +28,7 @@ type Draft = {
 
 const EMPTY: Draft = {
   name: "",
+  country: "",
   account: { type: "CHECKING", bank: "", balance: "", creditLimit: "", skip: false },
   subs: [],
   goal: { name: "", icon: "", color: "#34c759", target: "", months: 12, skip: false },
@@ -32,7 +36,7 @@ const EMPTY: Draft = {
 }
 
 const STEPS = [
-  { id: "name", title: "Empecemos por ti", hint: "Así te saludaremos cada vez que entres." },
+  { id: "name", title: "Empecemos por ti", hint: "Así te saludamos y te sugerimos tus bancos y tu moneda." },
   { id: "account", title: "Tu primera cuenta", hint: "Dónde tienes tu plata hoy. Después puedes sumar más." },
   { id: "subs", title: "¿Qué pagas cada mes?", hint: "Toca tus servicios y te avisaremos antes de cada cobro." },
   { id: "goal", title: "¿Para qué estás ahorrando?", hint: "Una meta clara hace que ahorrar sea más fácil." },
@@ -44,21 +48,23 @@ const num = (s: string) => Math.max(0, Number(String(s).replace(/\D/g, "")) || 0
 
 /** The payload for POST /api/v1/me/setup (or the "setup" field of the signup). */
 function toSetup(d: Draft) {
+  const c = countryOf(d.country)
   const isCredit = d.account.type === "CREDIT_CARD"
   const bank = d.account.bank.trim()
   return {
+    country: d.country || undefined,
     account: d.account.skip ? undefined : {
-      name: accountName(d.account.type, bank || null),
+      name: accountName(d.account.type, bank || null, c.code),
       type: d.account.type,
       bank: bank || undefined,
-      color: BANKS.find(b => b.name === bank)?.color ?? "#007aff",
-      currency: "CLP",
+      color: c.banks.find(b => b.name === bank)?.color ?? "#007aff",
+      currency: c.currency,
       ...(isCredit
         ? { usedAmount: num(d.account.balance), creditLimit: num(d.account.creditLimit) || undefined }
         : { balance: num(d.account.balance) }),
     },
     subscriptions: d.subs.filter(s => num(s.amount) > 0).map(s => ({
-      name: s.name, icon: s.icon, category: s.category, amount: num(s.amount), currency: "CLP", billingDay: new Date().getDate(),
+      name: s.name, icon: s.icon, category: s.category, amount: num(s.amount), currency: c.currency, billingDay: new Date().getDate(),
     })),
     goal: d.goal.skip || !d.goal.name.trim() || num(d.goal.target) <= 0 ? undefined : {
       name: d.goal.name.trim(), icon: d.goal.icon || "🎯", color: d.goal.color, targetAmount: num(d.goal.target), currentAmount: 0,
@@ -97,15 +103,16 @@ function Chip({ active, onClick, children }: { active?: boolean; onClick: () => 
   )
 }
 
-function MoneyInput({ value, onChange, placeholder = "0", autoFocus }: { value: string; onChange: (v: string) => void; placeholder?: string; autoFocus?: boolean }) {
+function MoneyInput({ value, onChange, symbol, placeholder = "0", autoFocus }: { value: string; onChange: (v: string) => void; symbol: string; placeholder?: string; autoFocus?: boolean }) {
   const n = num(value)
+  const pad = symbol.length > 1 ? "pl-11" : "pl-8"
   return (
     <div className="relative">
-      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#86868b] text-[15px]">$</span>
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#86868b] text-[15px]">{symbol}</span>
       <input inputMode="numeric" autoFocus={autoFocus} placeholder={placeholder}
         value={n ? n.toLocaleString("es-CL") : ""}
         onChange={e => onChange(e.target.value.replace(/\D/g, ""))}
-        className={`${inputCls} pl-8 tabular-nums`} />
+        className={`${inputCls} ${pad} tabular-nums`} />
     </div>
   )
 }
@@ -114,6 +121,8 @@ function MoneyInput({ value, onChange, placeholder = "0", autoFocus }: { value: 
 
 function Preview({ d }: { d: Draft }) {
   const s = toSetup(d)
+  const c = countryOf(d.country)
+  const fmt = (n: number) => fmtCurrency(n, c.currency)
   const subsTotal = s.subscriptions.reduce((a, x) => a + x.amount, 0)
   const acc = s.account
   const accBalance = acc ? ("usedAmount" in acc ? -(acc.usedAmount ?? 0) : acc.balance ?? 0) : 0
@@ -130,7 +139,7 @@ function Preview({ d }: { d: Draft }) {
             className="rounded-2xl p-5 text-white shadow-2xl" style={{ background: `linear-gradient(135deg, ${acc.color}, ${acc.color}99)` }}>
             <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">{acc.bank ?? "Mi cuenta"}</p>
             <p className="text-[14px] font-medium mt-0.5">{acc.name}</p>
-            <p className="text-[26px] font-semibold tabular-nums mt-6">{fmtCLP(accBalance)}</p>
+            <p className="text-[26px] font-semibold tabular-nums mt-6">{fmt(accBalance)}</p>
           </motion.div>
         )}
 
@@ -138,7 +147,7 @@ function Preview({ d }: { d: Draft }) {
           <motion.div key="subs" layout initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="rounded-2xl bg-white/[0.07] border border-white/10 p-4">
             <div className="flex justify-between text-[12px] text-white/55 mb-2">
-              <span>Cobros mensuales</span><span className="tabular-nums">{fmtCLP(subsTotal)}</span>
+              <span>Cobros mensuales</span><span className="tabular-nums">{fmt(subsTotal)}</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               <AnimatePresence>
@@ -156,14 +165,14 @@ function Preview({ d }: { d: Draft }) {
             className="rounded-2xl bg-white/[0.07] border border-white/10 p-4">
             <div className="flex items-center justify-between">
               <p className="text-[14px] font-medium">{s.goal.icon} {s.goal.name}</p>
-              <p className="text-[12px] text-white/55 tabular-nums">{fmtCLP(s.goal.targetAmount)}</p>
+              <p className="text-[12px] text-white/55 tabular-nums">{fmt(s.goal.targetAmount)}</p>
             </div>
             <div className="h-1.5 rounded-full bg-white/10 mt-3 overflow-hidden">
               <motion.div className="h-full rounded-full" style={{ backgroundColor: s.goal.color }} initial={{ width: 0 }} animate={{ width: "4%" }} />
             </div>
             {d.goal.months && (
               <p className="text-[11px] text-white/45 mt-2">
-                Ahorrando {fmtCLP(Math.ceil(s.goal.targetAmount / d.goal.months / 1000) * 1000)} al mes
+                Ahorrando {fmt(roundUp(s.goal.targetAmount / d.goal.months, c))} al mes
               </p>
             )}
           </motion.div>
@@ -175,7 +184,7 @@ function Preview({ d }: { d: Draft }) {
             {s.budgets.map(b => (
               <div key={b.category} className="flex justify-between text-[13px]">
                 <span className="text-white/70">{BUDGET_PRESETS.find(p => p.category === b.category)?.icon} {b.category}</span>
-                <span className="tabular-nums">{fmtCLP(b.amount)}</span>
+                <span className="tabular-nums">{fmt(b.amount)}</span>
               </div>
             ))}
           </motion.div>
@@ -222,7 +231,7 @@ export default function SignupWizard() {
   useEffect(() => {
     const saved = loadDraft()
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from storage
-    setD(saved)
+    setD(saved.country ? saved : { ...saved, country: guessCountry() })
     setLoaded(true)
   }, [])
   useEffect(() => {
@@ -237,6 +246,15 @@ export default function SignupWizard() {
   }, [state])
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD(prev => ({ ...prev, [k]: v }))
+  const [pickCountry, setPickCountry] = useState(false)
+  const ctry = countryOf(d.country)
+  const sym = currencySymbol(ctry.currency)
+  const fmt = (n: number) => fmtCurrency(n, ctry.currency)
+  function chooseCountry(c: Country) {
+    // A bank from the previous country makes no sense anymore.
+    setD(prev => ({ ...prev, country: c.code, account: { ...prev.account, bank: c.banks.some(b => b.name === prev.account.bank) ? prev.account.bank : "" } }))
+    setPickCountry(false)
+  }
   const total = STEPS.length
   // Goal gradient: the bar is never empty — being here already counts.
   const progress = Math.round(((step + 1) / (total + 1)) * 100)
@@ -324,6 +342,31 @@ export default function SignupWizard() {
                     <label className={labelCls}>¿Cómo te llamas?</label>
                     <input autoFocus value={d.name} onChange={e => set("name", e.target.value)} placeholder="Tu nombre" autoComplete="given-name" className={inputCls} />
                     {state?.errors?.name && <p className="mt-2 text-[12px] text-[#ff3b30]">{state.errors.name[0]}</p>}
+                    <label className={`${labelCls} mt-6`}>¿Dónde vives?</label>
+                    {loaded && (
+                      <motion.button type="button" layout onClick={() => setPickCountry(v => !v)} whileTap={{ scale: 0.98 }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.08] text-left">
+                        <span className="text-[22px] leading-none">{ctry.flag}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[15px] font-medium text-[#1d1d1f] dark:text-white">{ctry.name}</span>
+                          <span className="block text-[12px] text-[#86868b]">Montos en {ctry.currency} · bancos de {ctry.code === "XX" ? "todo el mundo" : ctry.name}</span>
+                        </span>
+                        <span className="text-[13px] font-medium text-[#007aff]">{pickCountry ? "Listo" : "Cambiar"}</span>
+                      </motion.button>
+                    )}
+                    <AnimatePresence initial={false}>
+                      {pickCountry && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <div className="flex flex-wrap gap-2 pt-3">
+                            {COUNTRIES.map(c => (
+                              <Chip key={c.code} active={c.code === ctry.code} onClick={() => chooseCountry(c)}>
+                                <span>{c.flag}</span>{c.name}
+                              </Chip>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </form>
                 )}
 
@@ -334,7 +377,7 @@ export default function SignupWizard() {
                       <div className="flex flex-wrap gap-2">
                         {ACCOUNT_TYPES.map(t => (
                           <Chip key={t.value} active={d.account.type === t.value} onClick={() => set("account", { ...d.account, type: t.value, skip: false })}>
-                            <span>{t.icon}</span>{t.label}
+                            <span>{t.icon}</span>{t.value === "SAVINGS" && ctry.code !== "CL" ? "Cuenta de ahorro" : t.label}
                           </Chip>
                         ))}
                       </div>
@@ -343,7 +386,7 @@ export default function SignupWizard() {
                       <div>
                         <label className={labelCls}>Banco</label>
                         <div className="flex flex-wrap gap-2">
-                          {BANKS.map(b => (
+                          {ctry.banks.map(b => (
                             <Chip key={b.name} active={d.account.bank === b.name}
                               onClick={() => set("account", { ...d.account, bank: d.account.bank === b.name ? "" : b.name, skip: false })}>
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}
@@ -355,13 +398,13 @@ export default function SignupWizard() {
                     {d.account.type === "CREDIT_CARD" ? (
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className={labelCls}>Cupo usado</label>
-                          <MoneyInput value={d.account.balance} onChange={v => set("account", { ...d.account, balance: v })} /></div>
+                          <MoneyInput symbol={sym} value={d.account.balance} onChange={v => set("account", { ...d.account, balance: v })} /></div>
                         <div><label className={labelCls}>Cupo total</label>
-                          <MoneyInput value={d.account.creditLimit} onChange={v => set("account", { ...d.account, creditLimit: v })} /></div>
+                          <MoneyInput symbol={sym} value={d.account.creditLimit} onChange={v => set("account", { ...d.account, creditLimit: v })} /></div>
                       </div>
                     ) : (
                       <div><label className={labelCls}>¿Cuánto tienes hoy? (aprox.)</label>
-                        <MoneyInput value={d.account.balance} onChange={v => set("account", { ...d.account, balance: v })} /></div>
+                        <MoneyInput symbol={sym} value={d.account.balance} onChange={v => set("account", { ...d.account, balance: v })} /></div>
                     )}
                   </div>
                 )}
@@ -379,7 +422,7 @@ export default function SignupWizard() {
                           className="flex items-center gap-3 overflow-hidden">
                           <span className="w-32 flex-shrink-0 text-[14px] text-[#1d1d1f] dark:text-white truncate">{s.icon} {s.name}</span>
                           <div className="flex-1 min-w-0">
-                            <MoneyInput value={s.amount} placeholder="Monto mensual" autoFocus={i === d.subs.length - 1}
+                            <MoneyInput symbol={sym} value={s.amount} placeholder="Monto mensual" autoFocus={i === d.subs.length - 1}
                               onChange={v => set("subs", d.subs.map(x => (x.name === s.name ? { ...x, amount: v } : x)))} />
                           </div>
                         </motion.div>
@@ -407,11 +450,11 @@ export default function SignupWizard() {
                     <div>
                       <label className={labelCls}>¿Cuánto necesitas?</label>
                       <div className="flex flex-wrap gap-2 mb-2.5">
-                        {GOAL_AMOUNTS.map(a => (
-                          <Chip key={a} active={num(d.goal.target) === a} onClick={() => set("goal", { ...d.goal, target: String(a) })}>{fmtShort(a)}</Chip>
+                        {GOAL_AMOUNTS.map(a => localAmount(a, ctry)).map(a => (
+                          <Chip key={a} active={num(d.goal.target) === a} onClick={() => set("goal", { ...d.goal, target: String(a) })}>{fmtShortIn(a, ctry.currency)}</Chip>
                         ))}
                       </div>
-                      <MoneyInput value={d.goal.target} onChange={v => set("goal", { ...d.goal, target: v })} />
+                      <MoneyInput symbol={sym} value={d.goal.target} onChange={v => set("goal", { ...d.goal, target: v })} />
                     </div>
                     <div>
                       <label className={labelCls}>¿Para cuándo?</label>
@@ -423,7 +466,7 @@ export default function SignupWizard() {
                       </div>
                       {d.goal.months && num(d.goal.target) > 0 && (
                         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[13px] text-[#34c759] font-medium mt-3">
-                          Son {fmtCLP(Math.ceil(num(d.goal.target) / d.goal.months / 1000) * 1000)} al mes.
+                          Son {fmt(roundUp(num(d.goal.target) / d.goal.months, ctry))} al mes.
                         </motion.p>
                       )}
                     </div>
@@ -436,14 +479,14 @@ export default function SignupWizard() {
                       <div key={b.category}>
                         <label className={labelCls}>{b.icon} {b.category}</label>
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {b.amounts.map(a => (
+                          {b.amounts.map(a => localAmount(a, ctry)).map(a => (
                             <Chip key={a} active={num(d.budgets[b.category] ?? "") === a}
                               onClick={() => set("budgets", { ...d.budgets, [b.category]: num(d.budgets[b.category] ?? "") === a ? "" : String(a) })}>
-                              {fmtShort(a)}
+                              {fmtShortIn(a, ctry.currency)}
                             </Chip>
                           ))}
                         </div>
-                        <MoneyInput value={d.budgets[b.category] ?? ""} placeholder="Otro monto"
+                        <MoneyInput symbol={sym} value={d.budgets[b.category] ?? ""} placeholder="Otro monto"
                           onChange={v => set("budgets", { ...d.budgets, [b.category]: v })} />
                       </div>
                     ))}

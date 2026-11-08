@@ -7,6 +7,7 @@ import ProviderBadge, { PROVIDER_LABEL } from "@/components/ProviderBadge"
 import { LoadingScreen } from "@/components/BrandLoader"
 import { logout } from "@/app/actions/auth"
 import PushSettings from "./PushSettings"
+import { COUNTRIES, countryOf } from "@/lib/countries"
 
 type Account = { id: string; name: string }
 
@@ -17,6 +18,7 @@ type Settings = {
   notifBudget: boolean
   hideAmountsOnStart: boolean
   defaultAccountId: string | null
+  country: string | null
 }
 
 const inputCls = "w-full px-4 py-3 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px] transition-all"
@@ -247,6 +249,20 @@ export default function ProfileClient({
             checked={settings.hideAmountsOnStart}
             onChange={v => updateSetting("hideAmountsOnStart", v)}
           />
+
+          {/* Country: drives suggested banks, currency and quick amounts */}
+          <div className="py-3.5">
+            <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-white mb-0.5">País</p>
+            <p className="text-[12px] text-[#86868b] mb-3">Sugerimos bancos y moneda de {countryOf(settings.country).name} al crear cuentas.</p>
+            <select
+              value={settings.country ?? ""}
+              onChange={e => updateSetting("country", e.target.value || null)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white text-[14px] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10"
+            >
+              {!settings.country && <option value="">Elige tu país</option>}
+              {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name} ({c.currency})</option>)}
+            </select>
+          </div>
 
           {/* Default account */}
           {accounts.length > 0 && (

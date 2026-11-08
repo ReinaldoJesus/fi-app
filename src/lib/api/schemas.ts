@@ -6,6 +6,7 @@
  * FormData converted with `Object.fromEntries` validates the same as a JSON body.
  */
 import { z } from "zod"
+import { COUNTRY_CODES } from "@/lib/countries"
 
 // ─── Primitives ──────────────────────────────────────────────────────────────
 
@@ -224,7 +225,10 @@ export const RecurringUpdate = z.object({ active: bool })
 
 // ─── Profile / auth ──────────────────────────────────────────────────────────
 
+const Country = z.enum(COUNTRY_CODES, "País no válido")
+
 export const ProfileUpdate = z.object({
+  country: Country.nullable().optional(),
   name: z.string().trim().min(1).max(80).optional(),
   theme: Theme.optional(),
   budgetCarryOver: bool.optional(),
@@ -249,6 +253,8 @@ const strongPassword = z
 
 /** What the person builds in the step-by-step signup, applied once to the new user. */
 export const AccountSetup = z.object({
+  /** Where they live (only saved if the profile has none yet). */
+  country: Country.optional(),
   account: AccountCreate.optional(),
   subscriptions: z.array(SubscriptionCreate).max(12, "Máximo 12 suscripciones").default([]),
   goal: SavingsGoalCreate.optional(),

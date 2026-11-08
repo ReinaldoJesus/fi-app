@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import Link from "next/link"
 import { listAccounts } from "@/server/services/accounts"
+import { getUserCountry } from "@/server/services/profile"
 import NewAccountButton from "../components/NewAccountButton"
 import NewTransferButton from "../components/NewTransferButton"
 import AccountDeleteButton from "./AccountDeleteButton"
@@ -53,7 +54,7 @@ function CreditCardVisual({ c }: { c: Acc }) {
 
 export default async function AccountsPage() {
   const session = await auth()
-  const accounts = await listAccounts(session!.user!.id as string)
+  const [accounts, country] = await Promise.all([listAccounts(session!.user!.id as string), getUserCountry(session!.user!.id as string)])
 
   const regularAll = accounts.filter(a => a.type !== "CREDIT_CARD")
   const cards = accounts.filter(a => a.type === "CREDIT_CARD")
@@ -89,7 +90,7 @@ export default async function AccountsPage() {
         </div>
         <div className="flex items-center gap-2">
           {accounts.length > 1 && <NewTransferButton accounts={transferAccounts} />}
-          <NewAccountButton />
+          <NewAccountButton country={country} />
         </div>
       </div>
 

@@ -18,6 +18,7 @@ export async function applySetup(userId: string, input: z.infer<typeof AccountSe
   if (await prisma.finAccount.count({ where: { userId } })) {
     throw conflict("Tu Clarifi ya está configurado")
   }
+  if (input.country) await prisma.user.updateMany({ where: { id: userId, country: null }, data: { country: input.country } })
   const account = input.account ? await createAccount(userId, input.account) : null
 
   for (const s of input.subscriptions) await createSubscription(userId, s)

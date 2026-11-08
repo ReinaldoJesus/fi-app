@@ -3,7 +3,8 @@ import { useRef, useActionState, useState } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api/client"
 import { CURRENCIES } from "@/lib/fmt"
-import { BANKS as BANK_PRESETS, accountName } from "@/lib/suggestions"
+import { accountName } from "@/lib/suggestions"
+import { countryOf } from "@/lib/countries"
 
 const ACCOUNT_TYPES = [
   { value: "CHECKING", label: "Cuenta corriente" }, { value: "SAVINGS", label: "Cuenta de ahorro" },
@@ -11,23 +12,26 @@ const ACCOUNT_TYPES = [
   { value: "INVESTMENT", label: "Inversiones" },
 ]
 const COLORS = ["#34c759", "#007aff", "#bf5af2", "#ff3b30", "#e63946", "#ff9500"]
-const BANKS = BANK_PRESETS.map(b => b.name)
 
 const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px]"
 const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1.5"
 
-export default function NewAccountButton() {
+/** `country` (ISO code from the profile) picks the suggested banks and the default currency. */
+export default function NewAccountButton({ country }: { country?: string | null }) {
+  const ctry = countryOf(country)
+  const BANK_PRESETS = ctry.banks
+  const BANKS = BANK_PRESETS.map(b => b.name)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router = useRouter()
   const [accountType, setAccountType] = useState("CHECKING")
-  const [currency, setCurrency] = useState("CLP")
+  const [currency, setCurrency] = useState(ctry.currency)
   const [bankInput, setBankInput] = useState("")
   const [showSugg, setShowSugg] = useState(false)
   const [name, setName] = useState("")
   const [nameTouched, setNameTouched] = useState(false)
   const [color, setColor] = useState(COLORS[0])
   // Smart default: "Cuenta corriente Santander" until the person types their own name.
-  const suggestedName = accountName(accountType, bankInput.trim() || null)
+  const suggestedName = accountName(accountType, bankInput.trim() || null, ctry.code)
   const shownName = nameTouched ? name : suggestedName
   function pickBank(b: string) {
     setBankInput(b)
@@ -41,7 +45,7 @@ export default function NewAccountButton() {
     if (!result.error) {
       dialogRef.current?.close()
       setAccountType("CHECKING")
-      setCurrency("CLP")
+      setCurrency(ctry.currency)
       setBankInput("")
       setName("")
       setNameTouched(false)
@@ -84,7 +88,7 @@ export default function NewAccountButton() {
               onChange={(e) => { setBankInput(e.target.value); setShowSugg(true) }}
               onBlur={() => setTimeout(() => setShowSugg(false), 150)}
               onFocus={() => setShowSugg(true)}
-              placeholder="Ej: Santander, BCI..." className={inputCls} />
+              placeholder={`Ej: ${BANKS.slice(0, 2).join(", ")}...`} className={inputCls} />
             {!bankInput && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {BANK_PRESETS.slice(0, 6).map(b => (

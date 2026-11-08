@@ -12,7 +12,7 @@ import { reportError } from "./monitoring"
 const profileSelect = {
   id: true, name: true, email: true, image: true, theme: true,
   budgetCarryOver: true, notifSubscriptions: true, notifInactivity: true, notifBudget: true,
-  hideAmountsOnStart: true, defaultAccountId: true, createdAt: true,
+  hideAmountsOnStart: true, defaultAccountId: true, country: true, createdAt: true,
 } as const
 
 export async function getProfile(userId: string) {
@@ -20,6 +20,11 @@ export async function getProfile(userId: string) {
   if (!u) throw notFound("Usuaria/o")
   const { password, ...rest } = u
   return { ...rest, hasPassword: !!password, createdAt: u.createdAt.toISOString() }
+}
+
+/** Just the country, for the smart defaults of the forms. */
+export async function getUserCountry(userId: string) {
+  return (await prisma.user.findUnique({ where: { id: userId }, select: { country: true } }))?.country ?? null
 }
 
 export async function updateProfile(userId: string, input: z.infer<typeof ProfileUpdate>) {
@@ -43,7 +48,7 @@ export async function registerUser(input: z.infer<typeof Register>, ctx: { ip: s
   // Only account creations count, so retries with a taken email don't lock anyone out.
   await assertRateLimit(`signup:ip:${ctx.ip}`, RULES.signupIp, "Demasiados registros desde esta conexión")
   const user = await prisma.user.create({
-    data: { name: input.name, email: input.email, password: await bcrypt.hash(input.password, 12) },
+    data: { name: input.name, email: input.email, password: await bcrypt.hash(input.password, 12), country: input.setup?.country },
     select: { id: true, name: true, email: true },
   })
   // What they built during the step-by-step signup. Never blocks the account itself:

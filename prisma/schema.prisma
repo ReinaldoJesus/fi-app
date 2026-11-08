@@ -23,6 +23,8 @@ model User {
   notifBudget        Boolean  @default(true)
   hideAmountsOnStart Boolean  @default(false)
   defaultAccountId   String?
+  /// ISO 3166-1 alpha-2 (CL, AR, MX…): drives bank suggestions, currency and quick amounts.
+  country            String?
   createdAt          DateTime @default(now())
   updatedAt     DateTime  @updatedAt
 

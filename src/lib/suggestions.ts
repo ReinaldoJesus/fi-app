@@ -13,25 +13,14 @@ export const ACCOUNT_TYPES = [
 
 export type AccountTypeValue = (typeof ACCOUNT_TYPES)[number]["value"]
 
-/** Most used banks and wallets in Chile, with a color close to their brand tone. */
-export const BANKS = [
-  { name: "BancoEstado", color: "#ff9500" },
-  { name: "Santander", color: "#ff3b30" },
-  { name: "Banco de Chile", color: "#007aff" },
-  { name: "BCI", color: "#1d1d1f" },
-  { name: "Scotiabank", color: "#e63946" },
-  { name: "Itaú", color: "#ff9500" },
-  { name: "Banco Falabella", color: "#34c759" },
-  { name: "Mercado Pago", color: "#007aff" },
-  { name: "Tenpo", color: "#bf5af2" },
-  { name: "BICE", color: "#007aff" },
-] as const
-
 export const ACCOUNT_COLORS = ["#34c759", "#007aff", "#bf5af2", "#ff3b30", "#e63946", "#ff9500"]
 
 /** Name a new account from its type and bank: "Cuenta corriente Santander". */
-export function accountName(type: string, bank?: string | null) {
-  const label = ACCOUNT_TYPES.find(t => t.value === type)?.label.split(" / ")[0] ?? "Cuenta"
+export function accountName(type: string, bank?: string | null, country?: string | null) {
+  // "Cuenta vista" is Chilean; elsewhere it is a savings account.
+  const label = type === "SAVINGS" && country && country !== "CL"
+    ? "Cuenta de ahorro"
+    : ACCOUNT_TYPES.find(t => t.value === type)?.label.split(" / ")[0] ?? "Cuenta"
   return bank ? `${label} ${bank}` : label
 }
 

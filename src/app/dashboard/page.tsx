@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { getSummary } from "@/server/services/reports"
 import { generateDueRecurring } from "@/server/services/recurring"
 import { getOnboarding } from "@/server/services/insights"
+import { getUserCountry } from "@/server/services/profile"
 import NewTransactionButton from "./components/NewTransactionButton"
 import NewAccountButton from "./components/NewAccountButton"
 import OnboardingBanner from "./components/OnboardingBanner"
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
   const month = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date())
 
   // Onboarding steps status
-  const onboarding = await getOnboarding(userId)
+  const [onboarding, country] = await Promise.all([getOnboarding(userId), getUserCountry(userId)])
 
   // Full-page onboarding for brand-new users
   if (accounts.length === 0) {
@@ -115,7 +116,7 @@ export default async function DashboardPage() {
                   <span className="text-[10px] font-bold text-[#007aff] bg-[#007aff]/10 px-2 py-0.5 rounded-full tracking-wide">PASO 2</span>
                 </div>
                 <p className="text-[13px] text-[#86868b] mb-4">Cuenta bancaria, tarjeta de crédito o efectivo.</p>
-                <NewAccountButton />
+                <NewAccountButton country={country} />
               </div>
             </div>
           </div>
