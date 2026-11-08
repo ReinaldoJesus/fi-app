@@ -285,13 +285,16 @@ export const ApiTokenCreate = z.object({
  * Wallet formats it ("$12.990", "US$4,50", "12,99 €"), so it is a loose string.
  */
 export const ShortcutTransaction = z.object({
-  amount: z.union([z.number(), z.string().trim().min(1)], "Falta el monto"),
+  amount: z.union([z.number(), z.string().trim().min(1)], "Falta el monto").optional(),
   merchant: z.string().trim().max(200).optional(),
   card: z.string().trim().max(120).optional(),
+  /** Android: the payment notification as is (Google Wallet or the bank's app). */
+  title: z.string().max(300).optional(),
+  text: z.string().max(1000).optional(),
   type: z.enum(["EXPENSE", "INCOME"]).default("EXPENSE"),
   /** Only says what would be recorded (to test the connection). */
   dryRun: z.boolean().default(false),
-})
+}).refine(d => d.amount !== undefined || !!d.text?.trim() || !!d.title?.trim(), { message: "Falta el monto", path: ["amount"] })
 
 export const AnalyticsQuery = z.object({ months: z.coerce.number().int().min(3).max(24).default(6) })
 

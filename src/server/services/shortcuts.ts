@@ -6,7 +6,8 @@ import { fmtCurrency } from "@/lib/fmt"
 import { badRequest } from "../errors"
 import { createTransaction } from "./transactions"
 import { getTransactionSuggestions } from "./insights"
-import { matchAccount, norm, parseLooseAmount } from "@/lib/wallet"
+import { ensureDefaultCategories } from "./categories"
+import { matchAccount, norm, parseLooseAmount, parseNotification } from "@/lib/wallet"
 
 /**
  * Records a payment sent by the iPhone Shortcuts "Transaction" automation
@@ -15,7 +16,10 @@ import { matchAccount, norm, parseLooseAmount } from "@/lib/wallet"
  * same merchant, so the person never has to type anything.
  */
 
-export async function recordShortcutTransaction(userId: string, input: z.infer<typeof ShortcutTransaction>) {
+export async function recordShortcutTransaction(userId: string, raw: z.infer<typeof ShortcutTransaction>) {
+  // Android sends the payment notification as is; fill what the iPhone sends explicitly.
+  const fromNotif = raw.title || raw.text ? parseNotification(raw.title, raw.text) : null
+  const input = { ...raw, amount: raw.amount ?? fromNotif?.amount, merchant: raw.merchant || fromNotif?.merchant, card: raw.card || fromNotif?.card }
   const [accounts, user, hints] = await Promise.all([
     prisma.finAccount.findMany({
       where: { userId, type: { not: "INVESTMENT" } },
@@ -27,12 +31,13 @@ export async function recordShortcutTransaction(userId: string, input: z.infer<t
   ])
   if (!accounts.length) throw badRequest("Primero crea una cuenta en Clarifi")
 
-  const account = matchAccount(input.card, accounts)
+  // On Android the notification title is often the bank's app ("Santander"): a hint for the account.
+  const account = matchAccount([input.card, fromNotif ? raw.title : undefined].filter(Boolean).join(" ") || undefined, accounts)
     ?? accounts.find(a => a.id === user?.defaultAccountId)
     ?? accounts.find(a => a.id === hints.topAccount)
     ?? accounts[0]
 
-  const amount = parseLooseAmount(input.amount, account.currency)
+  const amount = input.amount === undefined ? NaN : parseLooseAmount(input.amount, account.currency)
   if (!Number.isFinite(amount) || amount <= 0) {
     throw badRequest("No entendí el monto", { amount: ["No entendí el monto"] })
   }
@@ -44,7 +49,15 @@ export async function recordShortcutTransaction(userId: string, input: z.infer<t
     ? hints.suggestions.find(s => s.type === input.type && norm(s.description) === m)
       ?? hints.suggestions.find(s => s.type === input.type && (norm(s.description).includes(m) || m.includes(norm(s.description))))
     : undefined
-  const categoryId = known?.categoryId ?? hints.topCategory[input.type] ?? undefined
+  let categoryId: string | undefined = known?.categoryId ?? hints.topCategory[input.type] ?? undefined
+  if (!categoryId) {
+    // New person or new merchant with no history: "Otros gastos" / "Otros ingresos", never uncategorised.
+    await ensureDefaultCategories(userId)
+    const fallback = await prisma.category.findFirst({
+      where: { userId, type: input.type, name: { in: ["Otros gastos", "Otros ingresos"] } }, select: { id: true },
+    })
+    categoryId = fallback?.id
+  }
 
   const tx = input.dryRun ? { id: null } : await createTransaction(userId, {
     type: input.type,
@@ -52,7 +65,7 @@ export async function recordShortcutTransaction(userId: string, input: z.infer<t
     accountId: account.id,
     categoryId,
     description: merchant,
-    notes: input.card ? `Apple Pay · ${input.card}` : "Apple Pay",
+    notes: `${fromNotif ? "Android" : "Apple Pay"}${input.card ? ` · ${input.card}` : ""}`,
   })
   const category = categoryId
     ? await prisma.category.findUnique({ where: { id: categoryId }, select: { id: true, name: true } })
