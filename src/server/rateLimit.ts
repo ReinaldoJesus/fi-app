@@ -17,6 +17,8 @@ export const RULES = {
   resetEmail: { limit: 3, windowSec: 60 * 60 },
   resetIp: { limit: 10, windowSec: 60 * 60 },
   clientErrorIp: { limit: 30, windowSec: 60 * 60 },
+  shortcutToken: { limit: 60, windowSec: 60 * 60 },
+  tokenCreate: { limit: 10, windowSec: 60 * 60 },
 } satisfies Record<string, RateRule>
 
 export async function clientIp(): Promise<string> {

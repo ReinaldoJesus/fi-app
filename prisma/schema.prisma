@@ -40,6 +40,7 @@ model User {
   passwordResetTokens    PasswordResetToken[]
   pushSubscriptions      PushSubscription[]
   notificationDeliveries NotificationDelivery[]
+  apiTokens              ApiToken[]
 }
 
 model Account {
@@ -325,4 +326,22 @@ model Receipt {
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@map("receipts")
+}
+
+/// Personal tokens for automations (e.g. the iPhone Shortcuts "Transaction"
+/// trigger). Only the SHA-256 of the token is stored; it is shown once.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String    @unique
+  /// First characters, to recognise it in the list (clf_ab12…).
+  prefix     String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_tokens")
 }

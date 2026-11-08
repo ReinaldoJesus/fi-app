@@ -107,6 +107,7 @@ function nice(n: number) {
 
 /** A quick amount written in CLP, translated to a similar round amount in this country's currency. */
 export function localAmount(clp: number, country: Country) {
+  if (country.currency === "CLP") return clp
   return nice((clp / 950) * country.perUsd)
 }
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
 import { ApiError, unauthorized } from "./errors"
 import { reportError } from "./services/monitoring"
+import { userFromBearer } from "./services/apiTokens"
 
 /**
  * Response envelope for /api/v1:
@@ -94,6 +95,28 @@ export function withUser<P = Record<string, never>>(handler: Handler<P>) {
       return res
     } catch (err) {
       return handleError(err, req, userId)
+    }
+  }
+}
+
+/**
+ * For automations (iPhone Shortcuts): authenticates with a personal token
+ * (`Authorization: Bearer clf_…`) instead of the browser session.
+ */
+export function withToken(handler: (args: { req: Request; userId: string }) => Promise<Response>) {
+  return async (req: Request): Promise<Response> => {
+    let userId: string | undefined
+    try {
+      userId = await userFromBearer(req)
+      const res = await handler({ req, userId })
+      if (res.ok) revalidatePath("/dashboard", "layout")
+      return res
+    } catch (err) {
+      const res = await handleError(err, req, userId)
+      if (new URL(req.url).searchParams.get("format") !== "text") return res
+      // Shortcuts shows the body as is: send a readable sentence, not JSON.
+      const body = (await res.json()) as { error: { message: string } }
+      return new Response(`✗ Clarifi: ${body.error.message}`, { status: res.status, headers: { "content-type": "text/plain; charset=utf-8" } })
     }
   }
 }

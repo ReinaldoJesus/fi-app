@@ -12,6 +12,8 @@ type Op = {
   query?: z.ZodObject
   status?: number
   public?: boolean
+  /** Authenticated with a personal token (Bearer) instead of the session cookie. */
+  token?: boolean
 }
 
 const schema = (s: z.ZodType) =>
@@ -78,6 +80,16 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   },
   "/me/setup": {
     post: { tag: "Perfil", summary: "Aplica lo armado en el registro paso a paso (cuenta, suscripciones, meta, presupuestos). Solo una vez: 409 si ya hay cuentas", body: S.AccountSetup },
+  },
+  "/me/tokens": {
+    get: { tag: "Perfil", summary: "Tokens personales para automatizaciones (sin el valor del token)" },
+    post: { tag: "Perfil", summary: "Crea un token personal; el valor solo viene en esta respuesta", body: S.ApiTokenCreate, status: 201 },
+  },
+  "/me/tokens/{id}": {
+    delete: { tag: "Perfil", summary: "Revoca un token: las automatizaciones que lo usan dejan de funcionar" },
+  },
+  "/shortcuts/transaction": {
+    post: { tag: "Automatizaciones", summary: "Registra un pago de Apple Pay enviado por Atajos del iPhone (elige cuenta por la tarjeta y categoría por el comercio)", body: S.ShortcutTransaction, status: 201, token: true },
   },
   "/me/onboarding": {
     get: { tag: "Perfil", summary: "Primeros pasos y progreso (crear la cuenta ya cuenta como paso)" },
@@ -184,7 +196,7 @@ export function buildOpenApi(serverUrl: string) {
       paths[path][method] = {
         tags: [op!.tag],
         summary: op!.summary,
-        ...(op!.public ? { security: [] } : {}),
+        ...(op!.public ? { security: [] } : op!.token ? { security: [{ token: [] }] } : {}),
         parameters: [
           ...(path.includes("{id}") ? [{ name: "id", in: "path", required: true, schema: { type: "string" } }] : []),
           ...(op!.query ? queryParams(op!.query) : []),
@@ -219,6 +231,7 @@ export function buildOpenApi(serverUrl: string) {
     components: {
       securitySchemes: {
         session: { type: "apiKey", in: "cookie", name: "authjs.session-token" },
+        token: { type: "http", scheme: "bearer", description: "Token personal (clf_…) creado en Perfil → Atajos del iPhone" },
       },
     },
     security: [{ session: [] }],

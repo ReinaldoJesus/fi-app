@@ -276,6 +276,23 @@ export const Register = z
     path: ["confirmPassword"],
   })
 
+export const ApiTokenCreate = z.object({
+  name: z.string().trim().min(1, "Ponle un nombre").max(60).default("Atajos del iPhone"),
+})
+
+/**
+ * What the iPhone Shortcuts "Transaction" automation sends. The amount arrives as
+ * Wallet formats it ("$12.990", "US$4,50", "12,99 €"), so it is a loose string.
+ */
+export const ShortcutTransaction = z.object({
+  amount: z.union([z.number(), z.string().trim().min(1)], "Falta el monto"),
+  merchant: z.string().trim().max(200).optional(),
+  card: z.string().trim().max(120).optional(),
+  type: z.enum(["EXPENSE", "INCOME"]).default("EXPENSE"),
+  /** Only says what would be recorded (to test the connection). */
+  dryRun: z.boolean().default(false),
+})
+
 export const AnalyticsQuery = z.object({ months: z.coerce.number().int().min(3).max(24).default(6) })
 
 export type AccountCreateInput = z.infer<typeof AccountCreate>

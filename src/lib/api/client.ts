@@ -73,6 +73,8 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 type WithId = { id: string }
 
+export type ApiToken = { id: string; name: string; prefix: string; lastUsedAt: string | null; createdAt: string }
+
 export type SetupResult = { account: string | null; subscriptions: number; goal: string | null; budgets: number }
 
 export type TransactionSuggestions = {
@@ -100,6 +102,12 @@ export const api = {
     remove: (body: In<typeof S.AccountDeletion>) => request<{ deleted: true }>("DELETE", "/me", body),
     /** Applies the step-by-step signup (used after a Google/GitHub signup). */
     setup: (body: In<typeof S.AccountSetup>) => post<SetupResult>("/me/setup", body),
+    tokens: {
+      list: () => get<ApiToken[]>("/me/tokens"),
+      /** The plain token comes back only here. */
+      create: (body: In<typeof S.ApiTokenCreate>) => post<ApiToken & { token: string }>("/me/tokens", body),
+      revoke: (id: string) => request<{ revoked: true }>("DELETE", `/me/tokens/${id}`),
+    },
   },
   auth: {
     register: (body: In<typeof S.Register> | FormData) => post<{ id: string; email: string }>("/auth/register", body as Body),

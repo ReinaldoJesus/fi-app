@@ -7,6 +7,7 @@ import ProviderBadge, { PROVIDER_LABEL } from "@/components/ProviderBadge"
 import { LoadingScreen } from "@/components/BrandLoader"
 import { logout } from "@/app/actions/auth"
 import PushSettings from "./PushSettings"
+import ShortcutsSettings from "./ShortcutsSettings"
 import { COUNTRIES, countryOf } from "@/lib/countries"
 
 type Account = { id: string; name: string }
@@ -283,6 +284,8 @@ export default function ProfileClient({
           )}
         </div>
       </div>
+
+      <ShortcutsSettings />
 
       <YourData hasPassword={hasPassword} />
 
