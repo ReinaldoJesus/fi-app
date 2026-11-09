@@ -30,7 +30,9 @@ const reset = process.argv.includes("--reset")
 console.log(`✓ Base de desarrollo: …${dev.slice(-30)} (producción: …${prod.slice(-30)})`)
 console.log(reset ? "→ Borrando la base de desarrollo y recreándola desde las migraciones…" : "→ Aplicando migraciones pendientes…")
 const args = reset ? ["prisma", "migrate", "reset", "--force"] : ["prisma", "migrate", "deploy"]
-const r = spawnSync("npx", args, { stdio: "inherit", shell: process.platform === "win32" })
+// Migrations want a direct connection, not Neon's pooler (advisory locks).
+const direct = env.DATABASE_URL.replace("-pooler.", ".")
+const r = spawnSync("npx", args, { stdio: "inherit", shell: process.platform === "win32", env: { ...process.env, DATABASE_URL: direct } })
 if (r.status !== 0) process.exit(r.status ?? 1)
 console.log(`
 ✓ Base de desarrollo lista.

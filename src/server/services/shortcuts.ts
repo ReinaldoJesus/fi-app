@@ -64,8 +64,12 @@ export async function recordShortcutTransaction(userId: string, raw: z.infer<typ
   }
 
   if (!input.dryRun) {
+    // Only against other automatic movements: a hand-entered one with the same amount is not a repeat.
     const repeat = await prisma.transaction.findFirst({
-      where: { userId, type: input.type, amount, createdAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) } },
+      where: {
+        userId, type: input.type, amount, createdAt: { gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) },
+        OR: Object.values(SOURCE_LABEL).map(label => ({ notes: { startsWith: label } })),
+      },
       select: { id: true, description: true },
     })
     if (repeat) {

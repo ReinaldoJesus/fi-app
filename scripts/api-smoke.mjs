@@ -72,8 +72,12 @@ const me = await call("GET", "/api/v1/me")
 check("login + GET /me", me.status === 200 && me.data.email === EMAIL, me)
 
 // ── Accounts ────────────────────────────────────────────────────────────────
+// A run cut short (network, Ctrl+C) leaves its accounts behind; they would steal
+// card matches and turn this run's payments into "already recorded". Start clean.
+for (const stale of (await call("GET", "/api/v1/accounts")).data ?? []) await call("DELETE", `/api/v1/accounts/${stale.id}`)
+
 console.log("accounts")
-const A = (await call("POST", "/api/v1/accounts", { name: "QA Corriente", type: "CHECKING", balance: 100000 })).data
+const A =(await call("POST", "/api/v1/accounts", { name: "QA Corriente", type: "CHECKING", balance: 100000 })).data
 const B = (await call("POST", "/api/v1/accounts", { name: "QA Ahorro", type: "SAVINGS", balance: "0" })).data
 const C = await call("POST", "/api/v1/accounts", { name: "QA Visa", type: "CREDIT_CARD", creditLimit: "500000", usedAmount: "120000", color: "#007aff" })
 check("create accounts (JSON + form strings)", A?.balance === 100000 && B?.balance === 0, { A, B })
@@ -373,13 +377,13 @@ console.log("\nshortcuts (personal token)")
   check("promotion → ignored", promo.status === 200 && promo.body.data?.reason === "promoción", promo.body)
   const incoming = await sc({ title: "QA Banco", text: "Recibiste una transferencia de QA CAMILA ROJAS por $61.230", source: "notification" })
   check("transfer received → INCOME 'Transferencia de …' in Otros ingresos", incoming.status === 201 && incoming.body.data?.type === "INCOME" && incoming.body.data.amount === 61230 && /Transferencia de Qa Camila Rojas/.test(incoming.body.data.message) && incoming.body.data.category?.name === "Otros ingresos", incoming.body)
-  const balAfterIncome = await balanceOf(incoming.body.data?.account?.id)
   const salary = await sc({ title: "QA Banco", text: "Abono de remuneraciones por $1.234.567 en tu cuenta", source: "email" })
   check("salary deposit → INCOME in Sueldo", salary.body.data?.type === "INCOME" && salary.body.data.category?.name === "Sueldo", salary.body)
   const pat = await sc({ title: "QA Banco", text: "Se realizó un cargo por $9.991 por PAT NETFLIX", source: "sms" })
   check("automatic charge (PAT Netflix) → EXPENSE by the store dictionary", pat.body.data?.type === "EXPENSE" && pat.body.data.category?.name === "Entretenimiento", pat.body)
+  const balBeforeRepeat = await balanceOf(incoming.body.data?.account?.id)
   const again = await sc({ title: "QA Banco", text: "Recibiste una transferencia de QA CAMILA ROJAS por $61.230", source: "email" })
-  check("same movement arriving twice (notification + e-mail) → recorded once", again.status === 200 && again.body.data?.duplicate === true && (await balanceOf(incoming.body.data.account.id)) === balAfterIncome, again.body)
+  check("same movement arriving twice (notification + e-mail) → recorded once", again.status === 200 && again.body.data?.duplicate === true && (await balanceOf(incoming.body.data.account.id)) === balBeforeRepeat, again.body)
   check("revoke token",(await call("DELETE", `/api/v1/me/tokens/${tk.data.id}`)).status === 200)
   check("revoked token → 401", (await sc({ amount: "1" })).status === 401)
 }
