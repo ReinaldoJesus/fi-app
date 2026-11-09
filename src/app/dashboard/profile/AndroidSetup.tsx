@@ -34,7 +34,7 @@ export default function AndroidSetup({ url, footer }: { url: string; footer?: Re
     },
     {
       title: "Disparador: el aviso del pago",
-      body: <>Toca <b>Agregar macro</b> → en <b>Disparadores</b> toca <b>+</b> → <b>Notificación recibida</b>. Elige <b>Google Wallet</b> (y la app de tu banco, si te avisa de compras). Cuando pida <b>Acceso a notificaciones</b>, toca <b>Permitir</b>.</>,
+      body: <>Toca <b>Agregar macro</b> → en <b>Disparadores</b> toca <b>+</b> → <b>Notificación recibida</b>. Elige <b>Google Wallet</b> y <b>la app de tu banco</b> (así también llegan transferencias, sueldo y cobros automáticos). Cuando pida <b>Acceso a notificaciones</b>, toca <b>Permitir</b>.</>,
     },
     {
       title: "Acción: enviar a Clarifi",
@@ -66,7 +66,7 @@ export default function AndroidSetup({ url, footer }: { url: string; footer?: Re
         ))}
       </ol>
       <p className="text-[11px] text-[#86868b]">
-        Funciona con los avisos de Google Wallet y con los de la app de tu banco: Clarifi saca el monto, el comercio y la tarjeta del texto.
+        Clarifi lee cada aviso: registra compras, transferencias recibidas y enviadas, sueldo y cobros automáticos, e ignora promociones, claves y recordatorios. Si el mismo movimiento llega dos veces, se guarda una sola.
       </p>
       {footer}
     </div>

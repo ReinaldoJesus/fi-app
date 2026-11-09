@@ -293,10 +293,16 @@ export const ShortcutTransaction = z.object({
   amount: z.union([z.number(), z.string().trim().min(1)], "Falta el monto").optional(),
   merchant: z.string().trim().max(200).optional(),
   card: z.string().trim().max(120).optional(),
-  /** Android: the payment notification as is (Google Wallet or the bank's app). */
+  /**
+   * Any bank notice as is: an Android notification (Google Wallet or the bank's app),
+   * or an e-mail / SMS forwarded by an iPhone automation. Long e-mails are trimmed.
+   */
   title: z.string().max(300).optional(),
-  text: z.string().max(1000).optional(),
-  type: z.enum(["EXPENSE", "INCOME"]).default("EXPENSE"),
+  text: z.string().transform(s => s.slice(0, 5000)).optional(),
+  /** Where the notice came from; only used to label the movement. */
+  source: z.enum(["applepay", "notification", "email", "sms"]).optional(),
+  /** Omitted: an expense, unless the notice says money came in (transfer received, salary…). */
+  type: z.enum(["EXPENSE", "INCOME"]).optional(),
   /** Only says what would be recorded (to test the connection). */
   dryRun: z.boolean().default(false),
 }).refine(d => d.amount !== undefined || !!d.text?.trim() || !!d.title?.trim(), { message: "Falta el monto", path: ["amount"] })

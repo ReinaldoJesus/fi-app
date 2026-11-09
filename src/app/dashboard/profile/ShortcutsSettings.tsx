@@ -5,6 +5,7 @@ import { api, type ApiToken } from "@/lib/api/client"
 import { detectDevice, type Device } from "@/lib/device"
 import ShortcutGuide, { AiSetup } from "./ShortcutGuide"
 import AndroidSetup from "./AndroidSetup"
+import BankNoticesSetup from "./BankNoticesSetup"
 
 const card = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-6"
 
@@ -15,7 +16,7 @@ const card = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] 
  */
 const GUIDE_KEY = "clarifi-shortcut-guide"
 type Phone = "ios" | "android"
-type Guide = { token: string; step: number; mode?: "ai" | "steps"; phone?: Phone }
+type Guide = { token: string; step: number; mode?: "ai" | "steps"; phone?: Phone; topic?: "pay" | "bank" }
 const loadGuide = (): Guide | null => { try { return JSON.parse(localStorage.getItem(GUIDE_KEY) ?? "null") } catch { return null } }
 const saveGuide = (g: Guide | null) => { try { if (g) localStorage.setItem(GUIDE_KEY, JSON.stringify(g)); else localStorage.removeItem(GUIDE_KEY) } catch { /* ignore */ } }
 
@@ -73,7 +74,8 @@ export default function ShortcutsSettings() {
   // A phone only ever sees its own setup; a computer can switch.
   const phone: Phone = platform === "desktop" ? guide?.phone ?? "ios" : platform
   const aiAvailable = platform !== "ios" || device?.ai !== "no"
-  const mode = !aiAvailable ? "steps" : guide?.mode ?? (device?.ai === "maybe" && platform === "ios" ? "steps" : "ai")
+  const topic = guide?.topic ?? "pay"
+  const mode = !aiAvailable ? "steps" :guide?.mode ?? (device?.ai === "maybe" && platform === "ios" ? "steps" : "ai")
 
   async function create() {
     setBusy(true); setMsg(null)
@@ -101,7 +103,9 @@ export default function ShortcutsSettings() {
     setBusy(true); setMsg(null)
     const body = phone === "android"
       ? { title: "Prueba", text: "Compra por $4.990 en Prueba Google Pay con tu tarjeta de débito", dryRun: true }
-      : { amount: "$4.990", merchant: "Prueba Apple Pay", dryRun: true }
+      : topic === "bank"
+        ? { title: "Transferencia recibida", text: "Recibiste una transferencia de Prueba Clarifi por $4.990", source: "email", dryRun: true }
+        : { amount: "$4.990", merchant: "Prueba Apple Pay", dryRun: true }
     try {
       const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
       setMsg({ ok: res.ok, text: await res.text() })
@@ -137,16 +141,23 @@ export default function ShortcutsSettings() {
   } else {
     iosBody = (
       <>
-        {aiAvailable && (
-          <Segmented id="shortcut-mode" value={mode} onChange={m => guide && update({ ...guide, mode: m })}
-            options={[["ai", "✨ Con Apple Intelligence"], ["steps", "Paso a paso"]]} />
+        {/* Apple Pay payments, or everything else the bank tells you by e-mail / SMS. */}
+        <Segmented id="shortcut-topic" value={topic} onChange={t => guide && update({ ...guide, topic: t })}
+          options={[["pay", "💳 Pagos Apple Pay"], ["bank", "🏦 Avisos del banco"]]} />
+        {topic === "bank" ? <BankNoticesSetup url={url} ai={aiAvailable} footer={finish} /> : (
+          <>
+            {aiAvailable && (
+              <Segmented id="shortcut-mode" value={mode} onChange={m => guide && update({ ...guide, mode: m })}
+                options={[["ai", "✨ Con Apple Intelligence"], ["steps", "Paso a paso"]]} />
+            )}
+            {aiAvailable && platform === "ios" && device?.ai === "maybe" && mode === "ai" && (
+              <p className="text-[11px] text-[#86868b]">Funciona en iPhone 15 Pro o más nuevo. Si tu iPhone no ofrece crear atajos describiéndolos, usa “Paso a paso”.</p>
+            )}
+            {mode === "ai"
+              ? <AiSetup url={url} footer={finish} />
+              : <ShortcutGuide url={url} step={guide?.step ?? 0} onStep={step => guide && update({ ...guide, step })} footer={finish} />}
+          </>
         )}
-        {aiAvailable && platform === "ios" && device?.ai === "maybe" && mode === "ai" && (
-          <p className="text-[11px] text-[#86868b]">Funciona en iPhone 15 Pro o más nuevo. Si tu iPhone no ofrece crear atajos describiéndolos, usa “Paso a paso”.</p>
-        )}
-        {mode === "ai"
-          ? <AiSetup url={url} footer={finish} />
-          : <ShortcutGuide url={url} step={guide?.step ?? 0} onStep={step => guide && update({ ...guide, step })} footer={finish} />}
       </>
     )
   }
