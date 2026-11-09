@@ -77,14 +77,17 @@ export default function ShortcutsSettings() {
   const topic = guide?.topic ?? "pay"
   const mode = !aiAvailable ? "steps" :guide?.mode ?? (device?.ai === "maybe" && platform === "ios" ? "steps" : "ai")
 
-  async function create() {
+  /** The URL is shown only once (we keep a hash), so each setup gets its own token. */
+  async function create(topic: Guide["topic"] = "pay") {
     setBusy(true); setMsg(null)
-    const name = platform === "android" ? "Android (MacroDroid)" : platform === "ios" ? "iPhone (Atajos)" : "Pagos automáticos"
+    const name = platform === "android" ? "Android (MacroDroid)"
+      : platform === "ios" ? (topic === "bank" ? "iPhone (avisos del banco)" : "iPhone (Atajos)")
+      : "Pagos automáticos"
     const r = await api.me.tokens.create({ name })
     setBusy(false)
     if (!r.ok) { setMsg({ ok: false, text: r.error }); return }
     const { token, ...row } = r.data
-    update({ token, step: 0 })
+    update({ token, step: 0, topic })
     setTokens(t => [row, ...(t ?? [])])
   }
 
@@ -198,7 +201,15 @@ export default function ShortcutsSettings() {
               </div>
               {tooOld ? tooOldNote : (
                 <>
-                  <button type="button" onClick={create} disabled={busy}
+                  {/* Already connected for Apple Pay: transfers, salary and charges are a second, separate automation. */}
+                  {!!tokens?.length && platform !== "android" && (
+                    <button type="button" onClick={() => create("bank")} disabled={busy}
+                      className="w-full py-3 rounded-xl bg-[#007aff] text-white text-[14px] font-semibold disabled:opacity-40">
+                      🏦 Agregar avisos del banco
+                      <span className="block text-[11px] font-normal opacity-80">Transferencias, sueldo y cobros automáticos</span>
+                    </button>
+                  )}
+                  <button type="button" onClick={() => create()} disabled={busy}
                     className="w-full py-3 rounded-xl bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f] text-[14px] font-semibold disabled:opacity-40">
                     {tokens?.length ? "Conectar otro teléfono" : platform === "android" ? "Conectar con Android" : platform === "ios" ? "Conectar con Atajos" : "Conectar mi teléfono"}
                   </button>
