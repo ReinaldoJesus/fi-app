@@ -25,6 +25,11 @@ model User {
   defaultAccountId   String?
   /// ISO 3166-1 alpha-2 (CL, AR, MX…): drives bank suggestions, currency and quick amounts.
   country            String?
+  /// WhatsApp number linked to the bot, digits only with country code (56912345678).
+  whatsappPhone      String?  @unique
+  /// SHA-256 of the 6-digit code sent from WhatsApp to link it; short-lived.
+  whatsappCodeHash   String?  @unique
+  whatsappCodeExpiresAt DateTime?
   createdAt          DateTime @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -344,4 +349,12 @@ model ApiToken {
 
   @@index([userId])
   @@map("api_tokens")
+}
+
+/// WhatsApp message ids already handled: Meta re-sends a webhook when it is not sure we got it.
+model WhatsAppMessage {
+  id        String   @id
+  createdAt DateTime @default(now())
+
+  @@map("whatsapp_messages")
 }

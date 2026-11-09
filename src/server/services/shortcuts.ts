@@ -21,7 +21,7 @@ import { pickCategory } from "@/lib/merchantCategories"
  */
 
 /** Label stored in the movement's notes (also how the app recognises automatic ones). */
-export const SOURCE_LABEL = { applepay: "Apple Pay", notification: "Android", email: "Correo del banco", sms: "SMS del banco" } as const
+export const SOURCE_LABEL = { applepay: "Apple Pay", notification: "Android", email: "Correo del banco", sms: "SMS del banco", whatsapp: "WhatsApp" } as const
 /** The same payment can arrive twice (Apple Pay + the bank's e-mail): skip repeats within this window. */
 const DUPLICATE_WINDOW_MS = 30 * 60_000
 
@@ -63,7 +63,8 @@ export async function recordShortcutTransaction(userId: string, raw: z.infer<typ
     throw badRequest("No entendí el monto", { amount: ["No entendí el monto"] })
   }
 
-  if (!input.dryRun) {
+  // Something typed on WhatsApp is deliberate: two coffees of $2.500 are two coffees.
+  if (!input.dryRun && source !== "whatsapp") {
     // Only against other automatic movements: a hand-entered one with the same amount is not a repeat.
     const repeat = await prisma.transaction.findFirst({
       where: {
@@ -91,7 +92,7 @@ export async function recordShortcutTransaction(userId: string, raw: z.infer<typ
     await ensureDefaultCategories(userId)
     const cats = await prisma.category.findMany({ where: { userId, type: input.type }, select: { id: true, name: true } })
     categoryId = (input.type === "EXPENSE" ? pickCategory(merchant, cats)?.id : undefined)
-      ?? (parsed?.salary ? cats.find(c => c.name === "Sueldo")?.id : undefined)
+      ?? (parsed?.salary || (input.type === "INCOME" && /sueldo|salario|remuneraci|n[oó]mina/i.test(merchant ?? "")) ? cats.find(c => c.name === "Sueldo")?.id : undefined)
       ?? cats.find(c => c.name === "Otros gastos" || c.name === "Otros ingresos")?.id
   }
 

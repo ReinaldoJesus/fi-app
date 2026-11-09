@@ -288,7 +288,7 @@ export default function TransactionsClient({
   // Paid with the phone in the last 48 h: shown on top, since a bank import with later
   // posting dates can push them down the date-sorted list.
   const [now] = useState(() => Date.now())
-  const autoSource = (t: Tx) => ["Apple Pay", "Android", "Correo del banco", "SMS del banco"].find(s => t.notes?.startsWith(s)) ?? null
+  const autoSource = (t: Tx) => ["Apple Pay", "Android", "Correo del banco", "SMS del banco", "WhatsApp"].find(s => t.notes?.startsWith(s)) ?? null
   const freshAuto = initialTransactions.filter(t => autoSource(t) && t.createdAt && now - new Date(t.createdAt).getTime() < 48 * 3600_000).slice(0, 3)
   const editCategories = categories.filter(c => c.type === (editing?.type ?? "EXPENSE"))
   const hasFilters = search || filterType !== "ALL" || filterAccount || filterCategory || filterMonth

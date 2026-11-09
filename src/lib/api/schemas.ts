@@ -300,7 +300,7 @@ export const ShortcutTransaction = z.object({
   title: z.string().max(300).optional(),
   text: z.string().transform(s => s.slice(0, 5000)).optional(),
   /** Where the notice came from; only used to label the movement. */
-  source: z.enum(["applepay", "notification", "email", "sms"]).optional(),
+  source: z.enum(["applepay", "notification", "email", "sms", "whatsapp"]).optional(),
   /** Omitted: an expense, unless the notice says money came in (transfer received, salary…). */
   type: z.enum(["EXPENSE", "INCOME"]).optional(),
   /** Only says what would be recorded (to test the connection). */

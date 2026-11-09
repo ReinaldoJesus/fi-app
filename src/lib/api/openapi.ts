@@ -97,6 +97,15 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/shortcuts/transaction": {
     post: { tag: "Automatizaciones", summary: "Registra un pago de Apple Pay enviado por Atajos del iPhone (elige cuenta por la tarjeta y categoría por el comercio)", body: S.ShortcutTransaction, status: 201, token: true },
   },
+  "/me/whatsapp": {
+    get: { tag: "Perfil", summary: "Si el bot de WhatsApp está disponible y si tu número está conectado (enmascarado)" },
+    post: { tag: "Perfil", summary: "Código de 6 dígitos (10 minutos) y el enlace wa.me que lo envía al bot para conectar tu WhatsApp", status: 201 },
+    delete: { tag: "Perfil", summary: "Desconecta tu WhatsApp del bot" },
+  },
+  "/whatsapp": {
+    get: { tag: "Automatizaciones", summary: "Verificación del webhook por Meta (hub.verify_token)", public: true },
+    post: { tag: "Automatizaciones", summary: "Webhook de WhatsApp Cloud API: mensajes al bot, firmados con X-Hub-Signature-256", public: true },
+  },
   "/me/onboarding": {
     get: { tag: "Perfil", summary: "Primeros pasos y progreso (crear la cuenta ya cuenta como paso)" },
   },

@@ -388,6 +388,81 @@ console.log("\nshortcuts (personal token)")
   check("revoked token → 401", (await sc({ amount: "1" })).status === 401)
 }
 
+// ── WhatsApp bot: link with a code, then "gasté 5 lucas en el uber" ─────────
+console.log("\nwhatsapp bot")
+{
+  const raw = fs.readFileSync(".env.local", "utf8")
+  const get = k => raw.match(new RegExp(`^${k}=["']?([^"'\\r\\n]+)`, "m"))?.[1]
+  const SECRET = get("WHATSAPP_APP_SECRET"), VERIFY = get("WHATSAPP_VERIFY_TOKEN")
+  if (!SECRET || !VERIFY) {
+    console.log("  (skipped: no WHATSAPP_APP_SECRET / WHATSAPP_VERIFY_TOKEN in .env.local)")
+  } else {
+    const crypto = await import("node:crypto")
+    const phone = `569${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`
+    let n = 0
+    // What Meta sends: signed with the app secret.
+    const hook = async (message, { sign = true } = {}) => {
+      const body = JSON.stringify({ object: "whatsapp_business_account", entry: [{ id: "qa", changes: [{ field: "messages", value: {
+        messaging_product: "whatsapp", messages: [{ from: phone, id: `wamid.qa.${Date.now()}.${n++}`, timestamp: "0", ...message }] } }] }] })
+      const headers = { "content-type": "application/json" }
+      if (sign) headers["x-hub-signature-256"] = "sha256=" + crypto.createHmac("sha256", SECRET).update(body).digest("hex")
+      const res = await fetch(`${BASE}/api/v1/whatsapp`, { method: "POST", headers, body })
+      return { status: res.status, body, json: res.status === 200 ? await res.json() : null }
+    }
+    const say = async text => (await hook({ type: "text", text: { body: text } })).json?.replies?.[0]?.text ?? ""
+    const total = async () => (await call("GET", "/api/v1/accounts")).data.reduce((s, a) => s + Number(a.balance), 0)
+
+    const st = await call("GET", "/api/v1/me/whatsapp")
+    check("status → bot enabled, not linked", st.status === 200 && st.data.enabled && !st.data.linked, st)
+    const verify = (tok) => fetch(`${BASE}/api/v1/whatsapp?hub.mode=subscribe&hub.verify_token=${tok}&hub.challenge=qa123`)
+    const vBad = await verify("wrong"), vOk = await verify(VERIFY)
+    check("webhook verification: wrong token 403, right token echoes the challenge", vBad.status === 403 && vOk.status === 200 && (await vOk.text()) === "qa123")
+    check("unsigned webhook → 401", (await hook({ type: "text", text: { body: "hola" } }, { sign: false })).status === 401)
+    check("unknown number → asks to connect from the app", /no sé de quién/i.test(await say("gasté 5 lucas en el uber")))
+
+    const code = await call("POST", "/api/v1/me/whatsapp")
+    check("link code → 6 digits and a wa.me link with it", code.status === 201 && /^\d{6}$/.test(code.data.code) && code.data.url.includes("wa.me/") && decodeURIComponent(code.data.url).includes(code.data.code), code)
+    check("sending the code links the number", /Listo/.test(await say(`Hola Clarifi, mi código es ${code.data.code}`)))
+    const linked = await call("GET", "/api/v1/me/whatsapp")
+    check("status → linked, number masked", linked.data.linked && linked.data.phone.includes("••••") && !linked.data.phone.includes(phone.slice(3, 9)), linked.data)
+    check("a code works only once", /no sirve/i.test(await say(`mi código es ${code.data.code}`)))
+
+    const t0 = await total()
+    const uber = await say("gasté 5 lucas en el uber")
+    check("'gasté 5 lucas en el uber' → $5.000 Uber in Transporte", /Registrado: \$5\.000 en Uber · Transporte/.test(uber), uber)
+    check("…and moves the balance", (await total()) === t0 - 5000)
+    const undo = await say("borrar")
+    check("'borrar' → undoes it and restores the balance", /Borrado: \$5\.000 · Uber/.test(undo) && (await total()) === t0, undo)
+    check("'borrar' with nothing left → says so", /nada reciente/i.test(await say("borrar")))
+
+    const salary = await say("me pagaron el sueldo 1.200.000")
+    check("'me pagaron el sueldo 1.200.000' → +$1.200.000 in Sueldo", /\+\$1\.200\.000 · Sueldo · Sueldo/.test(salary), salary)
+    await say("borrar")
+    const two = [await say("2500 café"), await say("2500 café")]
+    check("the same thing typed twice is two movements (no dedupe on WhatsApp)", two.every(r => /Registrado/.test(r)), two)
+    await say("borrar"); await say("borrar")
+    check("balance back to where it started", (await total()) === t0)
+
+    const msg = { type: "text", text: { body: "15k super" } }
+    const body = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from: phone, id: `wamid.qa.repeat.${Date.now()}`, ...msg }] } }] }] })
+    const sig = "sha256=" + crypto.createHmac("sha256", SECRET).update(body).digest("hex")
+    const send = () => fetch(`${BASE}/api/v1/whatsapp`, { method: "POST", headers: { "content-type": "application/json", "x-hub-signature-256": sig }, body }).then(r => r.json())
+    const first = await send(), second = await send()
+    check("Meta re-sending the same message → handled once", first.replies?.length === 1 && second.replies?.length === 0 && /Supermercado|Alimentaci/.test(first.replies[0].text), { first, second })
+    await say("borrar")
+
+    check("'saldo' → lists the accounts", /Tus cuentas[\s\S]*QA Corriente/.test(await say("saldo")))
+    check("'mes' → month summary", /Gastos:[\s\S]*Ingresos:/.test(await say("mes")))
+    check("'hola' → help", /gasté 5 lucas/.test(await say("hola")))
+    check("no amount → explains how", /No encontré un monto/.test(await say("qué tal")))
+    check("a photo → only text for now", /solo entiendo mensajes de texto/.test((await hook({ type: "image", image: { id: "x" } })).json?.replies?.[0]?.text ?? ""))
+
+    check("unlink", (await call("DELETE", "/api/v1/me/whatsapp")).status === 200)
+    check("after unlinking the number is unknown again", /no sé de quién/i.test(await say("5000 uber")))
+    check("balance unchanged after all of it", (await total()) === t0)
+  }
+}
+
 // ── Delete several movements at once (e.g. a whole month) ──────────────────
 console.log("\nbulk delete")
 {

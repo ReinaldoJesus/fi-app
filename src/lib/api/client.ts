@@ -73,6 +73,7 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 type WithId = { id: string }
 
+export type WhatsAppStatus = { enabled: boolean; botNumber: string | null; linked: boolean; phone: string | null }
 export type ApiToken = { id: string; name: string; prefix: string; lastUsedAt: string | null; createdAt: string }
 
 export type SetupResult = { account: string | null; subscriptions: number; goal: string | null; budgets: number }
@@ -107,6 +108,12 @@ export const api = {
       /** The plain token comes back only here. */
       create: (body: In<typeof S.ApiTokenCreate>) => post<ApiToken & { token: string }>("/me/tokens", body),
       revoke: (id: string) => request<{ revoked: true }>("DELETE", `/me/tokens/${id}`),
+    },
+    whatsapp: {
+      status: () => get<WhatsAppStatus>("/me/whatsapp"),
+      /** 6-digit code (10 min) and the wa.me link that sends it to the bot. */
+      link: () => post<{ code: string; expiresAt: string; url: string }>("/me/whatsapp", {}),
+      unlink: () => request<{ unlinked: true }>("DELETE", "/me/whatsapp"),
     },
   },
   auth: {

@@ -8,6 +8,8 @@ import PendingSetup from "@/components/PendingSetup"
 import RefreshOnFocus from "@/components/RefreshOnFocus"
 import { BalanceVisibilityProvider } from "@/contexts/BalanceVisibility"
 import { getNotifications } from "@/server/services/reports"
+import { getWhatsAppStatus } from "@/server/services/whatsapp"
+import WhatsAppFab from "@/components/WhatsAppFab"
 
 export type { AppNotification } from "@/server/services/reports"
 
@@ -16,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session?.user) redirect("/login")
 
   const userId = session.user.id!
-  const shell = await getNotifications(userId)
+  const [shell, whatsapp] = await Promise.all([getNotifications(userId), getWhatsAppStatus(userId)])
   const dbTheme = shell.theme
   const urgentSubsCount = shell.urgentSubscriptionsCount
   const notifications = shell.notifications
@@ -48,6 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           />
           {children}
         </div>
+        {whatsapp.enabled && whatsapp.botNumber && <WhatsAppFab botNumber={whatsapp.botNumber} linked={whatsapp.linked} />}
       </div>
     </BalanceVisibilityProvider>
     </SessionProvider>

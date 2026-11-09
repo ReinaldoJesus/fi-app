@@ -12,7 +12,7 @@ type Rule = { re: RegExp; categories: string[] }
 
 const RULES: Rule[] = [
   // Supermarkets
-  { re: /\b(jumbo|lider|l[ií]der|unimarc|santa isabel|tottus|acuenta|alvi|mayorista ?10|ekono|oxxo|ok ?market|walmart|soriana|chedraui|carrefour|coto|disco\b|mercadona|eroski|wong|plaza vea|metro super|exito|[ée]xito|carulla|olimpica|ara\b|d1\b|pao de acucar|supermercado|minimarket|almacen|almac[ée]n|verduler|carnicer|panader)/,
+  { re: /\b(jumbo|lider|l[ií]der|unimarc|santa isabel|tottus|acuenta|alvi|mayorista ?10|ekono|oxxo|ok ?market|walmart|soriana|chedraui|carrefour|coto|disco\b|mercadona|eroski|wong|plaza vea|metro super|exito|[ée]xito|carulla|olimpica|ara\b|d1\b|pao de acucar|supermercado|super\b|minimarket|almacen|almac[ée]n|verduler|carnicer|panader)/,
     categories: ["Supermercado", "Alimentación"] },
   // Food & coffee
   { re: /\b(starbucks|juan valdez|dunkin|mcdonald|burger king|kfc|subway|domino|pizza|papa john|little caesars|telepizza|doggis|tarragona|melt|sushi|rappi|pedidos ?ya|uber ?eats|didi ?food|ifood|cafe|caf[ée]|cafeteria|restaurant|resto|bar\b|pub\b|taproom|cerveceria|helader|pasteler|empanad|food|comida)/,
@@ -24,7 +24,7 @@ const RULES: Rule[] = [
   { re: /\b(cruz verde|salcobrand|ahumada|farmacia|farmacias|dr\.? simi|similares|inkafarma|mifarma|guadalajara|clinica|cl[ií]nica|hospital|integramedica|redsalud|laboratorio|optica|[óo]ptica|dental|isapre|fonasa)/,
     categories: ["Salud"] },
   // Home & utilities
-  { re: /\b(sodimac|easy\b|homecenter|home depot|leroy|ikea|construmart|enel|cge\b|chilquinta|aguas andinas|esval|essbio|metrogas|abastible|gasco|lipigas|vtr|movistar|entel|wom\b|claro|mundo pacifico|gtd\b|arriendo|condominio|gastos comunes)/,
+  { re: /\b(sodimac|easy\b|homecenter|home depot|leroy|ikea|construmart|enel|cge\b|chilquinta|aguas andinas|esval|essbio|metrogas|abastible|gasco|lipigas|vtr|movistar|entel|wom\b|claro|mundo pacifico|gtd\b|arriendo|condominio|gastos comunes|luz\b|agua\b|internet\b)/,
     categories: ["Vivienda", "Servicios básicos"] },
   // Clothing & department stores
   { re: /\b(falabella|paris\b|ripley|h&m|h ?& ?m|zara|forever 21|adidas|nike|puma|skechers|bata\b|hush puppies|corona\b|tricot|la polar|hites|liverpool|el palacio|c&a|primark|mango|shein)/,
