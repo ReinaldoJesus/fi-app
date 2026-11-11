@@ -388,6 +388,45 @@ console.log("\nshortcuts (personal token)")
   check("revoked token → 401", (await sc({ amount: "1" })).status === 401)
 }
 
+// ── Wallet cards: which account each card goes to ─────────────────────────
+console.log("\nwallet cards")
+{
+  const tk = await call("POST", "/api/v1/me/tokens", { name: "QA cards" })
+  const pay = body => fetch(`${BASE}/api/v1/shortcuts/transaction`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tk.data.token}` }, body: JSON.stringify(body),
+  }).then(r => r.json())
+  const cardId = C.data.id
+  // A card name that matches no account: Clarifi has to guess (default / first account).
+  const first = await pay({ amount: "$3.100", merchant: "QA Kiosko Uno", card: "QA Tarjeta Misteriosa" })
+  const guessed = first.data?.account?.id
+  check("unknown card → some account (a guess)", !!guessed && guessed !== cardId, first)
+  const cards = await call("GET", "/api/v1/me/cards")
+  const mine = cards.data?.find(c => c.card === "QA Tarjeta Misteriosa")
+  check("GET /me/cards lists it, not assigned yet, where it went", mine && mine.accountId === null && mine.payments === 1 && mine.current[0][0] === guessed, cards.data)
+
+  const [gBefore, cBefore] = [await balanceOf(guessed), await balanceOf(cardId)]
+  const assign = await call("PUT", "/api/v1/me/cards", { card: "QA Tarjeta Misteriosa", accountId: cardId })
+  check("assign card → its past payment moves too", assign.status === 200 && assign.data.moved === 1 && assign.data.account.id === cardId, assign)
+  check("…and both balances follow", (await balanceOf(guessed)) === gBefore + 3100 && (await balanceOf(cardId)) === cBefore - 3100)
+  const next = await pay({ amount: "$2.200", merchant: "QA Kiosko Dos", card: "qa tarjeta  MISTERIOSA" })
+  check("next payment with that card (any case/spacing) → the chosen account", next.data?.account?.id === cardId, next)
+  check("assign to someone else's account → 404", (await call("PUT", "/api/v1/me/cards", { card: "x", accountId: "not-mine-123" })).status === 404)
+  check("assign without a card → 422", (await call("PUT", "/api/v1/me/cards", { card: "", accountId: cardId })).status === 422)
+
+  // Learning: fixing the account of one payment teaches the card.
+  const other = await pay({ amount: "$1.300", merchant: "QA Kiosko Tres", card: "QA Otra Tarjeta" })
+  check("another unknown card → guessed account", other.data?.account?.id === guessed, other)
+  await call("PATCH", `/api/v1/transactions/${other.data.id}`, { accountId: cardId })
+  const learned = (await call("GET", "/api/v1/me/cards")).data.find(c => c.card === "QA Otra Tarjeta")
+  check("moving one payment by hand teaches the card", learned?.accountId === cardId, learned)
+  const after = await pay({ amount: "$1.400", merchant: "QA Kiosko Cuatro", card: "QA Otra Tarjeta" })
+  check("…so the next one goes there on its own", after.data?.account?.id === cardId, after)
+
+  const made = [first.data.id, next.data.id, other.data.id, after.data.id]
+  await call("POST", "/api/v1/transactions/bulk-delete", { ids: made })
+  await call("DELETE", `/api/v1/me/tokens/${tk.data.id}`)
+}
+
 // ── WhatsApp bot: link with a code, then "gasté 5 lucas en el uber" ─────────
 console.log("\nwhatsapp bot")
 {

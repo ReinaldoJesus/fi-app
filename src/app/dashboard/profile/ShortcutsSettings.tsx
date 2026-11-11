@@ -6,6 +6,7 @@ import { detectDevice, type Device } from "@/lib/device"
 import ShortcutGuide, { AiSetup } from "./ShortcutGuide"
 import AndroidSetup from "./AndroidSetup"
 import BankNoticesSetup from "./BankNoticesSetup"
+import WalletCards from "./WalletCards"
 
 const card = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-6"
 
@@ -214,6 +215,9 @@ export default function ShortcutsSettings() {
                     {tokens?.length ? "Conectar otro teléfono" : platform === "android" ? "Conectar con Android" : platform === "ios" ? "Conectar con Atajos" : "Conectar mi teléfono"}
                   </button>
                   <p className="text-[11px] text-[#86868b] text-center">Te guiamos paso a paso. Toma unos 3 minutos; mejor ábrelo desde el teléfono.</p>
+                  {!!tokens?.length && platform !== "android" && (
+                    <p className="text-[11px] text-[#86868b] text-center">📵 Sin señal, el atajo no alcanza a avisar. Con los <b>avisos del banco</b> activados, ese pago entra igual cuando vuelve la conexión (sin duplicarse).</p>
+                  )}
                 </>
               )}
             </motion.div>
@@ -242,6 +246,8 @@ export default function ShortcutsSettings() {
             </ul>
           </div>
         )}
+
+        <WalletCards reloadKey={tokens?.length ?? 0} />
       </div>
     </MotionConfig>
   )

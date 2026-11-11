@@ -97,6 +97,10 @@ const routes: Record<string, Partial<Record<"get" | "post" | "put" | "patch" | "
   "/shortcuts/transaction": {
     post: { tag: "Automatizaciones", summary: "Registra un pago de Apple Pay enviado por Atajos del iPhone (elige cuenta por la tarjeta y categoría por el comercio)", body: S.ShortcutTransaction, status: 201, token: true },
   },
+  "/me/cards": {
+    get: { tag: "Perfil", summary: "Tarjetas que reportó el teléfono (Apple Pay, Android, avisos del banco) y a qué cuenta va cada una" },
+    put: { tag: "Perfil", summary: "Asigna una tarjeta a una cuenta; con moveExisting también mueve los pagos ya registrados (con sus saldos)", body: S.WalletCardAssign },
+  },
   "/me/whatsapp": {
     get: { tag: "Perfil", summary: "Si el bot de WhatsApp está disponible y si tu número está conectado (enmascarado)" },
     post: { tag: "Perfil", summary: "Código de 6 dígitos (10 minutos) y el enlace wa.me que lo envía al bot para conectar tu WhatsApp", status: 201 },

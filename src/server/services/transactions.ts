@@ -1,4 +1,5 @@
 import "server-only"
+import { learnFromAccountChange } from "./cardAliases"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/generated/prisma/client"
@@ -167,6 +168,8 @@ export async function updateTransaction(userId: string, id: string, input: z.inf
     }),
     ...balanceOps([...before.map(e => ({ ...e, delta: -e.delta })), ...after]),
   ])
+  // An Apple Pay / bank-notice payment moved to another account: that card belongs there.
+  if (!isTransfer && accountId !== old.accountId) await learnFromAccountChange(userId, updated.notes ?? old.notes, accountId)
   return serializeTransaction(updated)
 }
 

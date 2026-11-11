@@ -46,6 +46,7 @@ model User {
   pushSubscriptions      PushSubscription[]
   notificationDeliveries NotificationDelivery[]
   apiTokens              ApiToken[]
+  cardAliases            CardAlias[]
 }
 
 model Account {
@@ -119,6 +120,7 @@ model FinAccount {
   transactions          Transaction[]          @relation("FromAccount")
   transferTargets       Transaction[]          @relation("ToAccount")
   recurringTransactions RecurringTransaction[]
+  cardAliases           CardAlias[]
 
   @@map("fin_accounts")
 }
@@ -357,4 +359,24 @@ model WhatsAppMessage {
   createdAt DateTime @default(now())
 
   @@map("whatsapp_messages")
+}
+
+/// Which account a Wallet / bank card goes to ("Santander" → the credit card, not the checking account).
+model CardAlias {
+  id        String   @id @default(cuid())
+  userId    String
+  /// Normalised card name as the phone sends it (lowercase, no accents).
+  alias     String
+  /// The card name as first seen, to show it.
+  label     String
+  accountId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account FinAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, alias])
+  @@index([accountId])
+  @@map("card_aliases")
 }

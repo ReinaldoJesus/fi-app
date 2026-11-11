@@ -9,6 +9,8 @@ import { getTransactionSuggestions } from "./insights"
 import { ensureDefaultCategories } from "./categories"
 import { classifyNotification, matchAccount, norm, parseLooseAmount } from "@/lib/wallet"
 import { pickCategory } from "@/lib/merchantCategories"
+import { SOURCE_LABEL } from "@/lib/autoSources"
+import { accountForCard } from "./cardAliases"
 
 /**
  * Records a movement sent by an automation on the phone:
@@ -20,8 +22,7 @@ import { pickCategory } from "@/lib/merchantCategories"
  * that merchant (then a store dictionary), so nobody has to type anything.
  */
 
-/** Label stored in the movement's notes (also how the app recognises automatic ones). */
-export const SOURCE_LABEL = { applepay: "Apple Pay", notification: "Android", email: "Correo del banco", sms: "SMS del banco", whatsapp: "WhatsApp" } as const
+export { SOURCE_LABEL }
 /** The same payment can arrive twice (Apple Pay + the bank's e-mail): skip repeats within this window. */
 const DUPLICATE_WINDOW_MS = 30 * 60_000
 
@@ -52,8 +53,11 @@ export async function recordShortcutTransaction(userId: string, raw: z.infer<typ
   ])
   if (!accounts.length) throw badRequest("Primero crea una cuenta en Clarifi")
 
-  // The notice's title is often the bank's app or sender ("Santander"): a hint for the account.
-  const account = matchAccount([input.card, notice ? raw.title : undefined].filter(Boolean).join(" ") || undefined, accounts)
+  // 1) The account they chose for this card (or taught by moving an earlier payment).
+  // 2) The notice's title is often the bank's app or sender ("Santander"): a hint for the account.
+  const remembered = await accountForCard(userId, input.card)
+  const account = accounts.find(a => a.id === remembered)
+    ?? matchAccount([input.card, notice ? raw.title : undefined].filter(Boolean).join(" ") || undefined, accounts)
     ?? accounts.find(a => a.id === user?.defaultAccountId)
     ?? accounts.find(a => a.id === hints.topAccount)
     ?? accounts[0]

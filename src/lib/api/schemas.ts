@@ -307,6 +307,13 @@ export const ShortcutTransaction = z.object({
   dryRun: z.boolean().default(false),
 }).refine(d => d.amount !== undefined || !!d.text?.trim() || !!d.title?.trim(), { message: "Falta el monto", path: ["amount"] })
 
+/** A Wallet / bank card goes to this account (and optionally its past payments move there). */
+export const WalletCardAssign = z.object({
+  card: z.string().trim().min(1, "Falta la tarjeta").max(120),
+  accountId: z.string().min(1, "Elige una cuenta"),
+  moveExisting: z.boolean().default(true),
+})
+
 export const AnalyticsQuery = z.object({ months: z.coerce.number().int().min(3).max(24).default(6) })
 
 export type AccountCreateInput = z.infer<typeof AccountCreate>

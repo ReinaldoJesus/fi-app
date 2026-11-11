@@ -73,6 +73,7 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 type WithId = { id: string }
 
+export type WalletCard = { card: string; accountId: string | null; payments: number; current: [string, number][] }
 export type WhatsAppStatus = { enabled: boolean; botNumber: string | null; linked: boolean; phone: string | null }
 export type ApiToken = { id: string; name: string; prefix: string; lastUsedAt: string | null; createdAt: string }
 
@@ -108,6 +109,11 @@ export const api = {
       /** The plain token comes back only here. */
       create: (body: In<typeof S.ApiTokenCreate>) => post<ApiToken & { token: string }>("/me/tokens", body),
       revoke: (id: string) => request<{ revoked: true }>("DELETE", `/me/tokens/${id}`),
+    },
+    cards: {
+      /** Cards the phone has reported and the account each one goes to. */
+      list: () => get<WalletCard[]>("/me/cards"),
+      assign: (body: In<typeof S.WalletCardAssign>) => request<{ card: string; account: { id: string; name: string }; moved: number }>("PUT", "/me/cards", body),
     },
     whatsapp: {
       status: () => get<WhatsAppStatus>("/me/whatsapp"),
