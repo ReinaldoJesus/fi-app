@@ -74,9 +74,9 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
       </Link>
 
       {/* Account header */}
-      <section className="relative overflow-hidden rounded-3xl text-white bg-gradient-to-br from-[#1d1d1f] to-[#2c2c2e] dark:from-[#1c1c1e] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08]">
+      <section className="relative isolate overflow-hidden [transform:translateZ(0)] rounded-3xl text-white bg-gradient-to-br from-[#1d1d1f] to-[#2c2c2e] dark:from-[#1c1c1e] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08]">
         <div className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: account.color }} />
-        <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full blur-3xl opacity-30" style={{ backgroundColor: account.color }} />
+        <div className="pointer-events-none absolute -top-40 -right-32 w-[26rem] h-[26rem] opacity-40" style={{ background: `radial-gradient(closest-side, ${account.color}, transparent)` }} />
         <div className="relative p-6 lg:p-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="flex items-center gap-4">
             <ProductIcon type={account.type} color={account.color} size={48} />

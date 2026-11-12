@@ -213,9 +213,9 @@ export default async function DashboardPage() {
 
       {/* Balance hero */}
       <StaggerItem>
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1d1d1f] via-[#232326] to-[#2c2c2e] dark:from-[#1c1c1e] dark:via-[#161618] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08] text-white shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
-        <div className="pointer-events-none absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#007aff]/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-10 w-72 h-72 rounded-full bg-[#34c759]/10 blur-3xl" />
+      <section className="relative isolate overflow-hidden [transform:translateZ(0)] rounded-3xl bg-gradient-to-br from-[#1d1d1f] via-[#232326] to-[#2c2c2e] dark:from-[#1c1c1e] dark:via-[#161618] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08] text-white shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
+        <div className="pointer-events-none absolute -top-40 -right-32 w-[28rem] h-[28rem] bg-[radial-gradient(closest-side,rgba(0,122,255,0.28),transparent)]" />
+        <div className="pointer-events-none absolute -bottom-44 -left-24 w-[26rem] h-[26rem] bg-[radial-gradient(closest-side,rgba(52,199,89,0.12),transparent)]" />
         <div className="relative p-6 lg:p-8">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div>

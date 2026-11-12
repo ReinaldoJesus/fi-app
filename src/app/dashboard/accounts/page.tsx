@@ -96,8 +96,8 @@ export default async function AccountsPage() {
       </div>
 
       {/* Summary */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1d1d1f] to-[#2c2c2e] dark:from-[#1c1c1e] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08] text-white">
-        <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-[#007aff]/25 blur-3xl" />
+      <section className="relative isolate overflow-hidden [transform:translateZ(0)] rounded-3xl bg-gradient-to-br from-[#1d1d1f] to-[#2c2c2e] dark:from-[#1c1c1e] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08] text-white">
+        <div className="pointer-events-none absolute -top-40 -right-32 w-[26rem] h-[26rem] bg-[radial-gradient(closest-side,rgba(0,122,255,0.28),transparent)]" />
         <div className="relative grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.08]">
           <div className="p-6">
             <p className="text-[10px] font-semibold text-white/55 uppercase tracking-[0.12em]">Saldo en cuentas</p>

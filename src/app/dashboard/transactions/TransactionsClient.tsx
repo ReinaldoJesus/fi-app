@@ -8,6 +8,7 @@ import NewTransactionButton from "../components/NewTransactionButton"
 import NewTransferButton from "../components/NewTransferButton"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import { AnimatePresence, motion } from "motion/react"
+import { CountUp, Stagger, StaggerItem } from "@/components/motion"
 
 type Tx = {
   id: string; amount: number; type: string; description: string | null; notes: string | null; date: string
@@ -332,21 +333,22 @@ export default function TransactionsClient({
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <Stagger className="grid grid-cols-2 gap-3 mb-5">
         {[
           { label: "Total ingresos", value: `+${fmt(totalIncome)}`, color: "text-[#34c759]", count: filtered.filter(t => t.type === "INCOME").length },
           { label: "Total gastos", value: `−${fmt(totalExpense)}`, color: "text-[#ff3b30]", count: filtered.filter(t => t.type === "EXPENSE").length },
         ].map(({ label, value, color, count }) => (
-          <div key={label} className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none border border-black/[0.09] dark:border-white/[0.06]">
+          <StaggerItem key={label} className="bg-white dark:bg-[#1c1c1e] rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none border border-black/[0.09] dark:border-white/[0.06]">
             <p className="text-[11px] font-medium text-[#86868b] uppercase tracking-wide mb-2">{label}</p>
-            <p className={`text-[18px] font-semibold tabular-nums ${color}`}>{value}</p>
-            <p className="text-[11px] text-[#86868b] mt-1">{count} movimientos</p>
-          </div>
+            <CountUp value={value} className={`block text-[18px] font-semibold tabular-nums ${color}`} />
+            <p className="text-[11px] text-[#86868b] mt-1"><CountUp value={String(count)} duration={1} /> movimientos</p>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-4 mb-5 space-y-3">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+        className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-4 mb-5 space-y-3">
         <input
           type="text" placeholder="Buscar por descripción o categoría..."
           value={search} onChange={e => setSearch(e.target.value)}
@@ -356,9 +358,10 @@ export default function TransactionsClient({
           <div className="flex gap-1 p-1 bg-[#f5f5f7] dark:bg-white/[0.06] rounded-xl col-span-2 sm:col-span-1">
             {(["ALL", "INCOME", "EXPENSE"] as const).map(t => (
               <button key={t} onClick={() => setFilterType(t)}
-                className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-                  filterType === t ? "bg-white dark:bg-white/[0.12] text-[#1d1d1f] dark:text-white shadow-sm" : "text-[#86868b]"
+                className={`relative isolate flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                  filterType === t ? "text-[#1d1d1f] dark:text-white" : "text-[#86868b]"
                 }`}>
+                {filterType === t && <motion.span layoutId="type-pill" className="absolute inset-0 -z-10 rounded-lg bg-white dark:bg-white/[0.12] shadow-sm" />}
                 {t === "ALL" ? "Todos" : t === "INCOME"
                   ? <><span className={filterType === t ? "text-[#34c759]" : ""}>↑</span> Ingresos</>
                   : <><span className={filterType === t ? "text-[#ff3b30]" : ""}>↓</span> Gastos</>}
@@ -389,56 +392,66 @@ export default function TransactionsClient({
             {selecting ? "Cancelar" : "Seleccionar varios"}
           </button>
         </div>
+        <AnimatePresence initial={false}>
         {selecting && (
-          <p className="text-[12px] text-[#86868b]">
+          <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            className="text-[12px] text-[#86868b] overflow-hidden">
             Toca los movimientos que quieres eliminar. Para borrar un mes entero, elige el mes arriba y toca <b>Seleccionar todos</b>.
-          </p>
+          </motion.p>
         )}
-      </div>
+        </AnimatePresence>
+      </motion.div>
 
+      <AnimatePresence>
       {bulkMsg && (
-        <p className={`mb-4 px-4 py-3 rounded-xl text-[13px] ${bulkMsg.ok ? "bg-[#34c759]/10 text-[#248a3d] dark:text-[#30d158]" : "bg-[#ff3b30]/10 text-[#ff3b30]"}`}>{bulkMsg.text}</p>
+        <motion.p key={bulkMsg.text} initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }}
+          className={`mb-4 px-4 py-3 rounded-xl text-[13px] ${bulkMsg.ok ? "bg-[#34c759]/10 text-[#248a3d] dark:text-[#30d158]" : "bg-[#ff3b30]/10 text-[#ff3b30]"}`}>{bulkMsg.text}</motion.p>
       )}
+      </AnimatePresence>
 
       {freshAuto.length > 0 && !selecting && (
-        <div className="mb-5 rounded-2xl border border-[#007aff]/25 bg-[#007aff]/[0.06] px-4 py-3">
+        <motion.div initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.2 }}
+          className="mb-5 rounded-2xl border border-[#007aff]/25 bg-[#007aff]/[0.06] px-4 py-3">
           <p className="text-[11px] font-semibold text-[#007aff] uppercase tracking-wider mb-1.5">Registrados automáticamente</p>
           <ul className="space-y-1">
-            {freshAuto.map(t => (
-              <li key={t.id} className="flex items-center justify-between gap-3 text-[13px]">
+            {freshAuto.map((t, i) => (
+              <motion.li key={t.id} className="flex items-center justify-between gap-3 text-[13px]"
+                initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.07 }}>
                 <span className="min-w-0 truncate text-[#1d1d1f] dark:text-white">
                   {t.description ?? "Pago"} <span className="text-[#86868b]">· {autoSource(t)} · {new Date(t.date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}</span>
                 </span>
                 <span className="flex-shrink-0 whitespace-nowrap font-semibold tabular-nums text-[#1d1d1f] dark:text-white">{t.type === "INCOME" ? "+" : "−"}{fmt(t.amount)}</span>
-              </li>
+              </motion.li>
             ))}
           </ul>
-        </div>
+        </motion.div>
       )}
 
       {/* Transaction list */}
       {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] px-5 py-12 text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] px-5 py-12 text-center">
+          <motion.p initial={{ y: 6 }} animate={{ y: [6, -4, 0] }} transition={{ duration: 0.6 }} className="text-[28px] mb-1">🔍</motion.p>
           <p className="text-[#86868b] text-sm">Sin transacciones</p>
-        </div>
+        </motion.div>
       ) : (
         <div className="space-y-5">
           {grouped.map(([dateLabel, txs], gi) => (
             // Days cascade in; rows that are deleted or filtered out fold away.
             <motion.div key={dateLabel} layout="position" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: Math.min(gi, 8) * 0.05 }}>
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.18 + Math.min(gi, 10) * 0.06 }}>
               <p className="text-[11px] font-semibold text-[#86868b] mb-2 px-1 uppercase tracking-wider">{dateLabel}</p>
               <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
                 <AnimatePresence initial={false}>
                 {txs.map(t => (
                   <motion.div key={t.id} layout="position"
                     initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0, transition: { duration: 0.25 } }}
+                    exit={{ opacity: 0, height: 0, x: -40, transition: { duration: 0.3 } }}
                     style={{ overflow: "hidden" }}>
                   <div
                     onClick={selecting ? () => toggle(t.id) : undefined}
                     role={selecting ? "checkbox" : undefined} aria-checked={selecting ? selected.has(t.id) : undefined}
-                    className={`flex items-center gap-3.5 px-4 py-3.5 transition-all ${deletingId === t.id ? "opacity-40" : ""} ${selecting ? "cursor-pointer select-none" : ""} ${selecting && selected.has(t.id) ? "bg-[#007aff]/[0.06]" : ""}`}>
+                    className={`flex items-center gap-3.5 px-4 py-3.5 transition-all hover:bg-black/[0.02] dark:hover:bg-white/[0.03] active:bg-black/[0.04] dark:active:bg-white/[0.06] ${deletingId === t.id ? "opacity-40" : ""} ${selecting ? "cursor-pointer select-none" : ""} ${selecting && selected.has(t.id) ? "bg-[#007aff]/[0.06]" : ""}`}>
                     {selecting && (
                       <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected.has(t.id) ? "bg-[#007aff] border-[#007aff] text-white" : "border-[#c7c7cc] dark:border-[#48484a]"}`}>
                         {selected.has(t.id) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><motion.path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.22, ease: "easeOut" }} /></svg>}

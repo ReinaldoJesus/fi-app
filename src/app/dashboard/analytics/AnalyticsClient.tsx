@@ -1,7 +1,8 @@
 "use client"
 import { useMounted } from "@/lib/useMounted"
 import { useRouter } from "next/navigation"
-import { ProgressBar } from "@/components/motion"
+import { motion } from "motion/react"
+import { CountUp, ProgressBar, Reveal, Stagger, StaggerItem } from "@/components/motion"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -88,11 +89,12 @@ export default function AnalyticsClient({
           <div className="flex gap-1 p-1 bg-white dark:bg-[#1c1c1e] border border-black/[0.09] dark:border-white/[0.07] rounded-xl shadow-sm">
             {[3, 6, 12].map(p => (
               <button key={p} onClick={() => router.push(`/dashboard/analytics?period=${p}`)}
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
+                className={`relative isolate px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${
                   period === p
-                    ? "bg-[#1d1d1f] dark:bg-white text-white dark:text-[#1d1d1f]"
+                    ? "text-white dark:text-[#1d1d1f]"
                     : "text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white"
                 }`}>
+                {period === p && <motion.span layoutId="period-pill" className="absolute inset-0 -z-10 rounded-lg bg-[#1d1d1f] dark:bg-white" />}
                 {p}M
               </button>
             ))}
@@ -108,7 +110,7 @@ export default function AnalyticsClient({
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
           {
             label: "Ingresos este mes",
@@ -137,32 +139,29 @@ export default function AnalyticsClient({
             color: netWorth >= 0 ? "text-[#007aff]" : "text-[#ff3b30]",
           },
         ].map(({ label, value, sub, color }) => (
-          <div key={label} className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-4">
+          <StaggerItem key={label} className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-4">
             <p className="text-[10px] font-semibold text-[#86868b] uppercase tracking-wide mb-1">{label}</p>
-            <p className={`text-[16px] font-semibold tabular-nums ${color}`}>{value}</p>
+            <CountUp value={value} className={`block text-[16px] font-semibold tabular-nums ${color}`} />
             <p className="text-[10px] text-[#86868b] mt-0.5">{sub}</p>
-          </div>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
       {/* Proyección del mes */}
       {projectedExpense > 0 && (
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
+        <Reveal className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
           <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-3">Proyección · mes actual</p>
           <div className="flex items-end gap-4">
             <div>
               <p className="text-[11px] text-[#86868b]">Día {today} de {daysInMonth}</p>
-              <p className="text-[24px] font-semibold text-[#1d1d1f] dark:text-white">{fmt(projectedExpense)}</p>
+              <CountUp value={fmt(projectedExpense)} className="block text-[24px] font-semibold tabular-nums text-[#1d1d1f] dark:text-white" />
               <p className="text-[11px] text-[#86868b] mt-0.5">proyectado al fin de mes</p>
             </div>
             {totalBudget > 0 && projVsBudget !== null && (
               <div className="flex-1">
                 <div className="h-2 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${Math.min(100, projVsBudget)}%`,
-                      backgroundColor: projVsBudget >= 100 ? "#ff3b30" : projVsBudget >= 80 ? "#ff9500" : "#34c759",
-                    }} />
+                  <ProgressBar pct={projVsBudget} delay={0.3}
+                    color={projVsBudget >= 100 ? "#ff3b30" : projVsBudget >= 80 ? "#ff9500" : "#34c759"} />
                 </div>
                 <p className={`text-[11px] mt-1 font-medium ${projVsBudget >= 100 ? "text-[#ff3b30]" : projVsBudget >= 80 ? "text-[#ff9500]" : "text-[#34c759]"}`}>
                   {projVsBudget}% del presupuesto mensual ({fmt(totalBudget)})
@@ -176,11 +175,11 @@ export default function AnalyticsClient({
               </div>
             )}
           </div>
-        </div>
+        </Reveal>
       )}
 
       {/* Bar chart */}
-      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
+      <Reveal className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
         <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-4">Ingresos vs Gastos</p>
         {mounted ? (
           <ResponsiveContainer width="100%" height={200}>
@@ -190,8 +189,8 @@ export default function AnalyticsClient({
               <YAxis tick={{ fontSize: 10, fill: "#86868b" }} axisLine={false} tickLine={false}
                 tickFormatter={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
               <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-              <Bar dataKey="income" fill="#34c759" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" fill="#ff3b30" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="income" fill="#34c759" radius={[4, 4, 0, 0]} animationBegin={150} animationDuration={1100} animationEasing="ease-out" />
+              <Bar dataKey="expense" fill="#ff3b30" radius={[4, 4, 0, 0]} animationBegin={350} animationDuration={1100} animationEasing="ease-out" />
             </BarChart>
           </ResponsiveContainer>
         ) : (
@@ -201,10 +200,10 @@ export default function AnalyticsClient({
           <span className="flex items-center gap-1.5 text-[11px] text-[#86868b]"><span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />Ingresos</span>
           <span className="flex items-center gap-1.5 text-[11px] text-[#86868b]"><span className="w-2.5 h-2.5 rounded-full bg-[#ff3b30]" />Gastos</span>
         </div>
-      </div>
+      </Reveal>
 
       {/* Monthly savings chart */}
-      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
+      <Reveal className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
         <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-4">Ahorro neto mensual</p>
         {mounted ? (
           <ResponsiveContainer width="100%" height={160}>
@@ -228,7 +227,7 @@ export default function AnalyticsClient({
                 }}
                 cursor={{ fill: "rgba(0,0,0,0.03)" }}
               />
-              <Bar dataKey="savings" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="savings" radius={[4, 4, 0, 0]} animationBegin={200} animationDuration={1100} animationEasing="ease-out">
                 {months.map((m, i) => (
                   <Cell key={i} fill={m.savings >= 0 ? "#34c759" : "#ff3b30"} />
                 ))}
@@ -242,11 +241,11 @@ export default function AnalyticsClient({
           <span className="flex items-center gap-1.5 text-[11px] text-[#86868b]"><span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />Ahorro</span>
           <span className="flex items-center gap-1.5 text-[11px] text-[#86868b]"><span className="w-2.5 h-2.5 rounded-full bg-[#ff3b30]" />Déficit</span>
         </div>
-      </div>
+      </Reveal>
 
       {/* Category breakdown */}
       {byCategory.length > 0 && (
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
+        <Reveal className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none p-5 mb-6">
           <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-4">Gastos por categoría · mes actual</p>
           <div className="flex gap-6 items-center">
             {mounted ? (
@@ -254,7 +253,8 @@ export default function AnalyticsClient({
                 <ResponsiveContainer width={140} height={140}>
                   <PieChart>
                     <Pie data={byCategory} dataKey="amount" nameKey="name" cx="50%" cy="50%"
-                      innerRadius={42} outerRadius={65} paddingAngle={2} strokeWidth={0}>
+                      innerRadius={42} outerRadius={65} paddingAngle={2} strokeWidth={0}
+                      startAngle={90} endAngle={-270} animationBegin={200} animationDuration={1000} animationEasing="ease-out">
                       {byCategory.map((cat, i) => <Cell key={i} fill={cat.color} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
@@ -265,10 +265,12 @@ export default function AnalyticsClient({
               <div className="w-[140px] h-[140px] rounded-full bg-[#f5f5f7] dark:bg-white/[0.04] animate-pulse flex-shrink-0" />
             )}
             <div className="flex-1 space-y-2 min-w-0">
-              {byCategory.slice(0, 6).map(cat => {
+              {byCategory.slice(0, 6).map((cat, i) => {
                 const pct = totalExpense > 0 ? Math.round((cat.amount / totalExpense) * 100) : 0
                 return (
-                  <div key={cat.name} className="flex items-center gap-2">
+                  <motion.div key={cat.name} className="flex items-center gap-2"
+                    initial={{ opacity: 0, x: 10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.15 + i * 0.06 }}>
                     <span className="text-[13px] flex-shrink-0">{cat.icon ?? "•"}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -280,13 +282,13 @@ export default function AnalyticsClient({
                       </div>
                     </div>
                     <span className="text-[11px] text-[#86868b] flex-shrink-0 w-20 text-right tabular-nums">{fmt(cat.amount)}</span>
-                  </div>
+                  </motion.div>
                 )
               })}
               {byCategory.length > 6 && <p className="text-[11px] text-[#86868b]">+{byCategory.length - 6} más</p>}
             </div>
           </div>
-        </div>
+        </Reveal>
       )}
 
       {/* Top categories detail */}
@@ -294,10 +296,10 @@ export default function AnalyticsClient({
         <>
           <p className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-3">Detalle por categoría</p>
           <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
-            {byCategory.map(cat => {
+            {byCategory.map((cat, i) => {
               const pct = totalExpense > 0 ? Math.round((cat.amount / totalExpense) * 100) : 0
               return (
-                <div key={cat.name} className="flex items-center gap-3 px-4 py-3.5">
+                <Reveal key={cat.name} delay={Math.min(i, 8) * 0.04} className="flex items-center gap-3 px-4 py-3.5">
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[14px] flex-shrink-0" style={{ backgroundColor: `${cat.color}20` }}>
                     {cat.icon ?? <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />}
                   </div>
@@ -311,7 +313,7 @@ export default function AnalyticsClient({
                     </div>
                     <p className="text-[10px] text-[#86868b] mt-0.5">{pct}% del total de gastos</p>
                   </div>
-                </div>
+                </Reveal>
               )
             })}
           </div>

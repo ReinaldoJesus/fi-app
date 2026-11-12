@@ -55,8 +55,11 @@ export function ProgressBar({ pct, color, className = "h-full rounded-full", del
 // "$1.234.567", "−$12.990", "US$12,50", "Usado $3.000": prefix, number (es-CL), suffix.
 const NUMBER_RE = /^(.*?)(\d{1,3}(?:\.\d{3})*|\d+)(,\d+)?(.*)$/
 
-/** Counts from 0 up to the amount when shown; ends on the exact original text. */
-export function CountUp({ value, className, duration = 0.9 }: { value: string; className?: string; duration?: number }) {
+/**
+ * Counts up to the amount when shown (from 0 the first time, from the previous
+ * amount afterwards, e.g. when a filter changes); ends on the exact original text.
+ */
+export function CountUp({ value, className, duration = 1.6, delay = 0.25 }: { value: string; className?: string; duration?: number; delay?: number }) {
   const reduce = useReducedMotion()
   const m = value.match(NUMBER_RE)
   const decimals = m?.[3] ? m[3].length - 1 : 0
@@ -66,18 +69,24 @@ export function CountUp({ value, className, duration = 0.9 }: { value: string; c
   // Server and first client render agree on the starting frame; the effect animates to the real value.
   // null = done: show the original text exactly.
   const [text, setText] = useState<string | null>(() => (counts ? format(0) : null))
+  // The number on screen right now, so a new value continues from there.
+  const shown = useRef(0)
 
   useEffect(() => {
-    if (!counts) return
+    const from = shown.current
+    if (!counts || from === target) return
+    const first = from === 0
     // "Reduce motion": same path, zero duration, so it lands on the value at once.
-    const controls = animate(0, target, {
-      duration: reduce ? 0 : duration, ease: EASE_OUT,
-      onUpdate: v => setText(format(decimals ? v : Math.round(v))),
-      onComplete: () => setText(null),
+    const controls = animate(from, target, {
+      duration: reduce ? 0 : first ? duration : duration * 0.5,
+      delay: reduce || !first ? 0 : delay,
+      ease: EASE_OUT,
+      onUpdate: v => { shown.current = v; setText(format(decimals ? v : Math.round(v))) },
+      onComplete: () => { shown.current = target; setText(null) },
     })
     return () => controls.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the value matters
   }, [value, reduce])
 
-  return <span className={className}>{text ?? value}</span>
+  return <span className={className}>{counts ? text ?? value : value}</span>
 }
