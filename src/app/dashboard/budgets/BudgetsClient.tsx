@@ -2,6 +2,7 @@
 import { useTransition, useState } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api/client"
+import { ProgressBar } from "@/components/motion"
 
 type Cat = { id: string; name: string; color: string; icon: string | null }
 
@@ -98,7 +99,7 @@ export default function BudgetsClient({ categories, spent, budgetMap, suggested,
             {(() => {
               const pct = Math.min(100, Math.round((totalSpent / totalBudget) * 100))
               const color = pct >= 90 ? "#ff3b30" : pct >= 70 ? "#ff9500" : "#34c759"
-              return <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+              return <ProgressBar pct={pct} color={color} />
             })()}
           </div>
           <p className="text-[11px] text-[#86868b] mt-2">
@@ -186,7 +187,7 @@ export default function BudgetsClient({ categories, spent, budgetMap, suggested,
               </div>
               {budget > 0 && (
                 <div className="h-1.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden ml-11">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                  <ProgressBar pct={pct} color={barColor} />
                 </div>
               )}
             </div>

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useEffect } from "react"
+import { motion } from "motion/react"
 import { useMounted } from "@/lib/useMounted"
 import { logout } from "@/app/actions/auth"
 import SubmitOverlay from "@/components/SubmitOverlay"
@@ -86,14 +87,20 @@ export default function Sidebar({ userName, userEmail, userImage, provider, urge
                     <Link key={href} href={href}
                       className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
                         active
-                          ? "bg-white/[0.1] text-white"
+                          ? "text-white"
                           : "text-white/60 hover:text-white hover:bg-white/[0.05]"
                       }`}>
-                      {active && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[#007aff]" />}
-                      <span className={active ? "text-white" : "text-white/50"}>{icon}</span>
-                      {label}
+                      {/* The highlight slides from the previous section to this one. */}
+                      {active && (
+                        <motion.span layoutId="nav-active" className="absolute inset-0 rounded-xl bg-white/[0.1]"
+                          transition={{ type: "spring", stiffness: 420, damping: 36 }}>
+                          <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[#007aff]" />
+                        </motion.span>
+                      )}
+                      <span className={`relative ${active ? "text-white" : "text-white/50"}`}>{icon}</span>
+                      <span className="relative">{label}</span>
                       {urgent && (
-                        <span className="ml-auto text-[10px] font-bold bg-[#ff3b30] text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        <span className="relative ml-auto text-[10px] font-bold bg-[#ff3b30] text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                           {urgentSubsCount}
                         </span>
                       )}
@@ -150,8 +157,14 @@ export default function Sidebar({ userName, userEmail, userImage, provider, urge
               className={`relative flex-1 flex flex-col items-center gap-1 pt-2.5 pb-[max(1rem,env(safe-area-inset-bottom))] text-[10px] font-semibold transition-colors ${
                 active ? "text-[#007aff]" : "text-[#86868b]"
               }`}>
-              {active && <span className="absolute top-0 inset-x-6 h-[2px] rounded-b-full bg-[#007aff]" />}
-              {icon}
+              {active && (
+                <motion.span layoutId="tab-active" className="absolute top-0 inset-x-6 h-[2px] rounded-b-full bg-[#007aff]"
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }} />
+              )}
+              <motion.span animate={{ y: active ? -1 : 0, scale: active ? 1.08 : 1 }} whileTap={{ scale: 0.86 }}
+                transition={{ type: "spring", stiffness: 500, damping: 28 }}>
+                {icon}
+              </motion.span>
               {shortLabel ?? label}
             </Link>
           )

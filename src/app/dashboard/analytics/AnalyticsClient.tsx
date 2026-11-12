@@ -1,6 +1,7 @@
 "use client"
 import { useMounted } from "@/lib/useMounted"
 import { useRouter } from "next/navigation"
+import { ProgressBar } from "@/components/motion"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -275,7 +276,7 @@ export default function AnalyticsClient({
                         <span className="text-[11px] text-[#86868b] ml-2 flex-shrink-0">{pct}%</span>
                       </div>
                       <div className="h-1 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full mt-0.5">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: cat.color }} />
+                        <ProgressBar pct={pct} color={cat.color} />
                       </div>
                     </div>
                     <span className="text-[11px] text-[#86868b] flex-shrink-0 w-20 text-right tabular-nums">{fmt(cat.amount)}</span>
@@ -306,7 +307,7 @@ export default function AnalyticsClient({
                       <p className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums">{fmt(cat.amount)}</p>
                     </div>
                     <div className="h-1.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: cat.color }} />
+                      <ProgressBar pct={pct} color={cat.color} />
                     </div>
                     <p className="text-[10px] text-[#86868b] mt-0.5">{pct}% del total de gastos</p>
                   </div>

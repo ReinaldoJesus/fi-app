@@ -6,6 +6,7 @@ import PrivateAmount from "@/components/PrivateAmount"
 import { fmtCurrency } from "@/lib/fmt"
 import ProductIcon from "@/components/ProductIcon"
 import { card, ACCOUNT_TYPE_LABEL } from "@/lib/ui"
+import { ProgressBar } from "@/components/motion"
 
 
 type TxRow = Awaited<ReturnType<typeof getAccountStatement>>["transactions"][number]
@@ -101,7 +102,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
               {pct != null && (
                 <div className="col-span-2">
                   <div className="h-1.5 bg-white/[0.1] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                    <ProgressBar pct={pct} color={barColor} />
                   </div>
                   <p className="mt-1.5 text-[11px] text-white/50">{pct}% del cupo utilizado</p>
                 </div>

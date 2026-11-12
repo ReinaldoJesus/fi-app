@@ -1,6 +1,7 @@
 "use client"
 import { useSyncExternalStore } from "react"
 import Link from "next/link"
+import { ProgressBar } from "@/components/motion"
 
 type Step = {
   id: string
@@ -53,7 +54,7 @@ export default function OnboardingBanner({ steps, percent }: { steps: Step[]; pe
 
       {/* Progress bar */}
       <div className="h-1.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden mb-4">
-        <div className="h-full bg-[#34c759] rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
+        <ProgressBar pct={percent} color={"#34c759"} />
       </div>
 
       {/* Steps */}

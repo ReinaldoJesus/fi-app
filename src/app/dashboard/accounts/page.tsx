@@ -10,6 +10,7 @@ import PrivateAmount from "@/components/PrivateAmount"
 import ProductIcon from "@/components/ProductIcon"
 import { fmtCurrency } from "@/lib/fmt"
 import { card, eyebrow, sectionTitle, ACCOUNT_TYPE_LABEL } from "@/lib/ui"
+import { ProgressBar } from "@/components/motion"
 
 type Acc = Awaited<ReturnType<typeof listAccounts>>[number]
 
@@ -220,7 +221,7 @@ export default async function AccountsPage() {
                         <span className="font-semibold tabular-nums" style={{ color: barColor }}>{pct}%</span>
                       </div>
                       <div className="h-1.5 bg-black/[0.06] dark:bg-white/[0.08] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                        <ProgressBar pct={pct} color={barColor} />
                       </div>
                     </div>
                   )}

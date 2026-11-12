@@ -7,6 +7,7 @@ import ReceiptField from "./ReceiptField"
 import NewTransactionButton from "../components/NewTransactionButton"
 import NewTransferButton from "../components/NewTransferButton"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import { AnimatePresence, motion } from "motion/react"
 
 type Tx = {
   id: string; amount: number; type: string; description: string | null; notes: string | null; date: string
@@ -422,18 +423,25 @@ export default function TransactionsClient({
         </div>
       ) : (
         <div className="space-y-5">
-          {grouped.map(([dateLabel, txs]) => (
-            <div key={dateLabel}>
+          {grouped.map(([dateLabel, txs], gi) => (
+            // Days cascade in; rows that are deleted or filtered out fold away.
+            <motion.div key={dateLabel} layout="position" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: Math.min(gi, 8) * 0.05 }}>
               <p className="text-[11px] font-semibold text-[#86868b] mb-2 px-1 uppercase tracking-wider">{dateLabel}</p>
               <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none divide-y divide-black/[0.06] dark:divide-white/[0.05]">
+                <AnimatePresence initial={false}>
                 {txs.map(t => (
-                  <div key={t.id}
+                  <motion.div key={t.id} layout="position"
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0, transition: { duration: 0.25 } }}
+                    style={{ overflow: "hidden" }}>
+                  <div
                     onClick={selecting ? () => toggle(t.id) : undefined}
                     role={selecting ? "checkbox" : undefined} aria-checked={selecting ? selected.has(t.id) : undefined}
                     className={`flex items-center gap-3.5 px-4 py-3.5 transition-all ${deletingId === t.id ? "opacity-40" : ""} ${selecting ? "cursor-pointer select-none" : ""} ${selecting && selected.has(t.id) ? "bg-[#007aff]/[0.06]" : ""}`}>
                     {selecting && (
                       <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${selected.has(t.id) ? "bg-[#007aff] border-[#007aff] text-white" : "border-[#c7c7cc] dark:border-[#48484a]"}`}>
-                        {selected.has(t.id) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                        {selected.has(t.id) && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><motion.path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.22, ease: "easeOut" }} /></svg>}
                       </span>
                     )}
                     {t.category?.icon ? (
@@ -493,9 +501,11 @@ export default function TransactionsClient({
                       </button>
                     </div>
                   </div>
+                  </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
@@ -504,8 +514,11 @@ export default function TransactionsClient({
         Mostrando {filtered.length} de {initialTransactions.length} transacciones
       </p>
 
+      <AnimatePresence>
       {selecting && (
-        <div className="fixed inset-x-0 z-40 px-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6 lg:left-64">
+        <motion.div initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 90, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+          className="fixed inset-x-0 z-40 px-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6 lg:left-64">
           <div className="max-w-4xl mx-auto flex items-center gap-2 rounded-2xl bg-[#1d1d1f] dark:bg-[#2c2c2e] text-white px-3 py-2.5 shadow-[0_12px_30px_rgba(0,0,0,0.3)]">
             <button onClick={() => setSelected(allSelected ? new Set() : new Set(filtered.map(t => t.id)))}
               className="px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-[#64d2ff] hover:bg-white/10 whitespace-nowrap">
@@ -519,8 +532,9 @@ export default function TransactionsClient({
               {bulkDeleting ? "Eliminando…" : "Eliminar"}
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {confirmBulk && (
         <ConfirmDialog

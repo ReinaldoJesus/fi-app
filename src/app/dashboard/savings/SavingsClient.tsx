@@ -4,6 +4,7 @@ import { api } from "@/lib/api/client"
 import { useRouter } from "next/navigation"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import { GOAL_AMOUNTS, GOAL_DEADLINES, GOAL_PRESETS, fmtShort, monthsFromNow } from "@/lib/suggestions"
+import { ProgressBar } from "@/components/motion"
 
 type Goal = {
   id: string; name: string; icon: string | null; color: string
@@ -265,8 +266,7 @@ export default function SavingsClient({ goals }: { goals: Goal[] }) {
             </div>
           </div>
           <div className="h-2 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-[#34c759] transition-all duration-700"
-              style={{ width: `${totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0}%` }} />
+            <ProgressBar pct={totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0} color="#34c759" />
           </div>
           <p className="text-[11px] text-[#86868b] mt-2">
             {fmt(Math.max(0, totalTarget - totalSaved))} restante · {totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0}% completado
@@ -319,7 +319,7 @@ export default function SavingsClient({ goals }: { goals: Goal[] }) {
                   </div>
                 </div>
                 <div className="h-2.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
+                  <ProgressBar pct={pct} color={goal.color} />
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <p className="text-[11px] text-[#86868b]">{pct}% completado</p>

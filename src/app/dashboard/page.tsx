@@ -9,6 +9,7 @@ import NewAccountButton from "./components/NewAccountButton"
 import OnboardingBanner from "./components/OnboardingBanner"
 import NewTransferButton from "./components/NewTransferButton"
 import PrivateAmount from "@/components/PrivateAmount"
+import { ProgressBar, Stagger, StaggerItem } from "@/components/motion"
 import ProductIcon from "@/components/ProductIcon"
 import { QuickActionContent, quickActionCls } from "@/components/QuickAction"
 import { card, sectionTitle, eyebrow, linkAction, ACCOUNT_TYPE_LABEL } from "@/lib/ui"
@@ -85,7 +86,7 @@ export default async function DashboardPage() {
               <span className="text-[#86868b]">{onboarding.done} de {onboarding.total} pasos</span>
             </div>
             <div className="h-1.5 bg-[#e5e5ea] dark:bg-white/[0.08] rounded-full overflow-hidden">
-              <div className="h-full bg-[#34c759] rounded-full" style={{ width: `${onboarding.percent}%` }} />
+              <ProgressBar pct={onboarding.percent} color="#34c759" />
             </div>
           </div>
 
@@ -202,15 +203,16 @@ export default async function DashboardPage() {
   const monFmt = new Intl.DateTimeFormat("es-CL", { month: "short" })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6 lg:py-8 space-y-6">
+    <Stagger className="max-w-6xl mx-auto px-4 lg:px-8 py-6 lg:py-8 space-y-6">
 
       {/* Greeting */}
-      <div>
+      <StaggerItem>
         <p className="text-[13px] text-[#86868b] font-medium">{greeting},</p>
         <h1 className="text-[26px] font-semibold text-[#1d1d1f] dark:text-white tracking-tight leading-tight">{firstName}</h1>
-      </div>
+      </StaggerItem>
 
       {/* Balance hero */}
+      <StaggerItem>
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1d1d1f] via-[#232326] to-[#2c2c2e] dark:from-[#1c1c1e] dark:via-[#161618] dark:to-[#0b0b0c] dark:border dark:border-white/[0.08] text-white shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
         <div className="pointer-events-none absolute -top-24 -right-16 w-80 h-80 rounded-full bg-[#007aff]/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-10 w-72 h-72 rounded-full bg-[#34c759]/10 blur-3xl" />
@@ -218,17 +220,17 @@ export default async function DashboardPage() {
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div>
               <p className="text-[11px] font-semibold text-white/55 uppercase tracking-[0.12em]">Saldo disponible</p>
-              <PrivateAmount value={clp(checkingBalance)} className="block mt-2 text-[38px] lg:text-[46px] font-semibold tracking-tight tabular-nums leading-none" />
+              <PrivateAmount countUp value={clp(checkingBalance)} className="block mt-2 text-[38px] lg:text-[46px] font-semibold tracking-tight tabular-nums leading-none" />
               <p className="mt-3 text-[12px] text-white/45">Cuentas corrientes y de ahorro</p>
             </div>
             <div className="grid grid-cols-2 gap-3 lg:min-w-[340px]">
               <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] px-4 py-3">
                 <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] font-semibold">Deuda tarjetas</p>
-                <PrivateAmount value={creditDebt > 0 ? `−${clp(creditDebt)}` : clp(0)} className="block mt-1 text-[16px] font-semibold tabular-nums text-[#ff453a]" />
+                <PrivateAmount countUp value={creditDebt > 0 ? `−${clp(creditDebt)}` : clp(0)} className="block mt-1 text-[16px] font-semibold tabular-nums text-[#ff453a]" />
               </div>
               <div className="rounded-2xl bg-white/[0.06] border border-white/[0.08] px-4 py-3">
                 <p className="text-[10px] text-white/50 uppercase tracking-[0.08em] font-semibold">Balance neto</p>
-                <PrivateAmount
+                <PrivateAmount countUp
                   value={netBalance === 0 ? clp(0) : netPositive ? clp(netBalance) : `−${clp(Math.abs(netBalance))}`}
                   className={`block mt-1 text-[16px] font-semibold tabular-nums ${netPositive ? "text-[#30d158]" : "text-[#ff453a]"}`}
                 />
@@ -250,8 +252,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+      </StaggerItem>
 
-      {!onboarding.completed && <OnboardingBanner steps={onboarding.steps} percent={onboarding.percent} />}
+      {!onboarding.completed && <StaggerItem><OnboardingBanner steps={onboarding.steps} percent={onboarding.percent} /></StaggerItem>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
@@ -259,7 +262,7 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Products */}
-          <section className={card}>
+          <StaggerItem><section className={card}>
             <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
               <div>
                 <h2 className={sectionTitle}>Mis productos</h2>
@@ -293,7 +296,7 @@ export default async function DashboardPage() {
                           </p>
                           {pct != null && (
                             <div className="mt-2 h-1 w-full max-w-[220px] rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                              <ProgressBar pct={pct} color={barColor} />
                             </div>
                           )}
                         </div>
@@ -314,10 +317,10 @@ export default async function DashboardPage() {
                 </div>
               </div>
             ))}
-          </section>
+          </section></StaggerItem>
 
           {/* Recent movements */}
-          <section className={card}>
+          <StaggerItem><section className={card}>
             <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
               <div>
                 <h2 className={sectionTitle}>Últimos movimientos</h2>
@@ -362,14 +365,14 @@ export default async function DashboardPage() {
                 })}
               </div>
             )}
-          </section>
+          </section></StaggerItem>
         </div>
 
         {/* Right column */}
         <div className="space-y-6">
 
           {/* Month summary */}
-          <section className={`${card} p-5`}>
+          <StaggerItem><section className={`${card} p-5`}>
             <div className="flex items-center justify-between mb-4">
               <h2 className={sectionTitle}>Resumen del mes</h2>
               <span className="text-[12px] text-[#86868b] capitalize">{month}</span>
@@ -379,17 +382,17 @@ export default async function DashboardPage() {
                 <span className="flex items-center gap-2 text-[13px] text-[#6e6e73] dark:text-[#8e8e93]">
                   <span className="w-2 h-2 rounded-full bg-[#34c759]" />Ingresos
                 </span>
-                <PrivateAmount value={clp(incomeMonth)} className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
+                <PrivateAmount countUp value={clp(incomeMonth)} className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[13px] text-[#6e6e73] dark:text-[#8e8e93]">
                   <span className="w-2 h-2 rounded-full bg-[#ff3b30]" />Gastos
                 </span>
-                <PrivateAmount value={clp(expensesMonth)} className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
+                <PrivateAmount countUp value={clp(expensesMonth)} className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums" />
               </div>
               <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white">Resultado</span>
-                <PrivateAmount
+                <PrivateAmount countUp
                   value={`${monthResult >= 0 ? "+" : "−"}${clp(Math.abs(monthResult))}`}
                   className={`text-[16px] font-semibold tabular-nums ${monthResult >= 0 ? "text-[#34c759]" : "text-[#ff3b30]"}`}
                 />
@@ -398,7 +401,7 @@ export default async function DashboardPage() {
             {spentPct !== null && (
               <div className="mt-4">
                 <div className="h-2 rounded-full bg-[#34c759]/15 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${spentPct}%`, backgroundColor: spentPct >= 100 ? "#ff3b30" : spentPct >= 80 ? "#ff9500" : "#007aff" }} />
+                  <ProgressBar pct={spentPct} color={spentPct >= 100 ? "#ff3b30" : spentPct >= 80 ? "#ff9500" : "#007aff"} />
                 </div>
                 <p className="mt-2 text-[11px] text-[#86868b]">
                   Has gastado el <span className="font-semibold text-[#1d1d1f] dark:text-white">{spentPct}%</span> de tus ingresos
@@ -406,10 +409,10 @@ export default async function DashboardPage() {
                 </p>
               </div>
             )}
-          </section>
+          </section></StaggerItem>
 
           {/* Budgets */}
-          <section className={card}>
+          <StaggerItem><section className={card}>
             <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
               <h2 className={sectionTitle}>Presupuestos</h2>
               <Link href="/dashboard/budgets" className={linkAction}>{budgetProgress.length > 0 ? "Ver todos →" : "Crear →"}</Link>
@@ -429,7 +432,7 @@ export default async function DashboardPage() {
                         <span className="text-[12px] font-semibold tabular-nums" style={{ color: barColor }}>{b.pct}%</span>
                       </div>
                       <div className="h-1.5 bg-[#f5f5f7] dark:bg-white/[0.08] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: barColor }} />
+                        <ProgressBar pct={b.pct} color={barColor} />
                       </div>
                       <PrivateAmount value={`${clp(b.spent)} de ${clp(b.budget)}`} className="block mt-1 text-[11px] text-[#86868b] tabular-nums" />
                     </div>
@@ -437,10 +440,10 @@ export default async function DashboardPage() {
                 })}
               </div>
             )}
-          </section>
+          </section></StaggerItem>
 
           {/* Upcoming charges */}
-          <section className={card}>
+          <StaggerItem><section className={card}>
             <div className="px-5 py-4 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.05]">
               <div>
                 <h2 className={sectionTitle}>Próximos cobros</h2>
@@ -475,9 +478,9 @@ export default async function DashboardPage() {
                 })}
               </div>
             )}
-          </section>
+          </section></StaggerItem>
         </div>
       </div>
-    </div>
+    </Stagger>
   )
 }

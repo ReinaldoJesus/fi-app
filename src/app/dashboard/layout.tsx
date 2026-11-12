@@ -10,6 +10,7 @@ import { BalanceVisibilityProvider } from "@/contexts/BalanceVisibility"
 import { getNotifications } from "@/server/services/reports"
 import { getWhatsAppStatus } from "@/server/services/whatsapp"
 import WhatsAppFab from "@/components/WhatsAppFab"
+import { MotionRoot } from "@/components/motion"
 
 export type { AppNotification } from "@/server/services/reports"
 
@@ -27,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <SessionProvider session={session}>
     <BalanceVisibilityProvider initialHidden={user?.hideAmountsOnStart ?? false}>
+    <MotionRoot>
       <div className="flex bg-[#f2f2f7] dark:bg-black min-h-screen">
         <Sidebar
           userName={session.user.name ?? null}
@@ -52,6 +54,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         {whatsapp.enabled && whatsapp.botNumber && <WhatsAppFab botNumber={whatsapp.botNumber} linked={whatsapp.linked} />}
       </div>
+    </MotionRoot>
     </BalanceVisibilityProvider>
     </SessionProvider>
   )
