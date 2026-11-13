@@ -5,6 +5,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react"
 import BrandMark from "@/components/BrandMark"
 import { LoadingScreen } from "@/components/BrandLoader"
 import SubmitOverlay from "@/components/SubmitOverlay"
+import { FormAlert, IconInput, SubmitButton } from "@/components/AuthField"
 import { signup, loginWithGitHub, loginWithGoogle } from "@/app/actions/auth"
 import {
   ACCOUNT_TYPES, BUDGET_PRESETS, GOAL_AMOUNTS, GOAL_DEADLINES, GOAL_PRESETS, POPULAR_SUBSCRIPTIONS,
@@ -87,7 +88,7 @@ function loadDraft(): Draft {
 
 /* ─── UI atoms ───────────────────────────────────────────────────────────────── */
 
-const inputCls = "w-full px-4 py-3 rounded-2xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-[#007aff]/30 text-[15px] transition-all"
+const inputCls = "w-full px-4 py-3 rounded-2xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:bg-white dark:focus:bg-[#1c1c1e] focus:border-[#007aff]/40 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.12)] text-[15px] transition-all duration-200"
 const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-2"
 
 function Chip({ active, onClick, children }: { active?: boolean; onClick: () => void; children: ReactNode }) {
@@ -340,7 +341,7 @@ export default function SignupWizard() {
                 {current.id === "name" && (
                   <form onSubmit={e => { e.preventDefault(); if (canNext) go(1) }}>
                     <label className={labelCls}>¿Cómo te llamas?</label>
-                    <input autoFocus value={d.name} onChange={e => set("name", e.target.value)} placeholder="Tu nombre" autoComplete="given-name" className={inputCls} />
+                    <IconInput icon="user" autoFocus value={d.name} onChange={e => set("name", e.target.value)} placeholder="Tu nombre" autoComplete="given-name" className="rounded-2xl text-[15px]" />
                     {state?.errors?.name && <p className="mt-2 text-[12px] text-[#ff3b30]">{state.errors.name[0]}</p>}
                     <label className={`${labelCls} mt-6`}>¿Dónde vives?</label>
                     {loaded && (
@@ -497,25 +498,22 @@ export default function SignupWizard() {
                   <form ref={formRef} action={action} className="space-y-3"
                     onSubmit={() => { try { localStorage.removeItem(SETUP_DRAFT_KEY) } catch { /* ignore */ } }}>
                     {state?.message && (
-                      <div className="px-4 py-3 rounded-xl bg-[#ff3b30]/[0.08] border border-[#ff3b30]/20 text-[#ff3b30] text-[13px]">{state.message}</div>
+                      <FormAlert key={state.message} tone="error" className="">{state.message}</FormAlert>
                     )}
                     <input type="hidden" name="name" value={d.name.trim()} />
                     <input type="hidden" name="setup" value={JSON.stringify(toSetup(d))} />
                     {[
-                      { id: "email", label: "Email", type: "email", placeholder: "tu@email.com", auto: "email" },
-                      { id: "password", label: "Contraseña", type: "password", placeholder: "Mínimo 8 caracteres, una mayúscula y un número", auto: "new-password" },
-                      { id: "confirmPassword", label: "Confirmar contraseña", type: "password", placeholder: "Repite tu contraseña", auto: "new-password" },
-                    ].map(f => (
-                      <div key={f.id}>
+                      { id: "email", label: "Usuario (email)", type: "email", placeholder: "tu@email.com", auto: "email", icon: "user" as const },
+                      { id: "password", label: "Contraseña", type: "password", placeholder: "Mínimo 8, una mayúscula y un número", auto: "new-password", icon: "lock" as const },
+                      { id: "confirmPassword", label: "Confirmar contraseña", type: "password", placeholder: "Repite tu contraseña", auto: "new-password", icon: "shield" as const },
+                    ].map((f, i) => (
+                      <motion.div key={f.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 + i * 0.07 }}>
                         <label className={labelCls}>{f.label}</label>
-                        <input name={f.id} type={f.type} required placeholder={f.placeholder} autoComplete={f.auto} className={inputCls} />
+                        <IconInput icon={f.icon} name={f.id} type={f.type} required placeholder={f.placeholder} autoComplete={f.auto} className="rounded-2xl text-[15px]" />
                         {state?.errors?.[f.id] && <p className="mt-1.5 text-[12px] text-[#ff3b30]">{state.errors[f.id]![0]}</p>}
-                      </div>
+                      </motion.div>
                     ))}
-                    <motion.button type="submit" disabled={pending} whileTap={{ scale: 0.98 }}
-                      className="w-full py-3.5 bg-[#1d1d1f] dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-[#1d1d1f] font-semibold rounded-2xl text-[15px] mt-2">
-                      Crear mi Clarifi
-                    </motion.button>
+                    <SubmitButton pending={pending} pendingLabel="Creando tu Clarifi…" className="py-3.5 rounded-2xl text-[15px] mt-2">Crear mi Clarifi</SubmitButton>
                     <p className="text-[11px] text-[#86868b] text-center leading-relaxed">
                       Al crear tu cuenta aceptas los <Link href="/terms" className="text-[#007aff]">Términos de uso</Link> y la{" "}
                       <Link href="/privacy" className="text-[#007aff]">Política de privacidad</Link>.

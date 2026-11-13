@@ -53,6 +53,41 @@ dialog[open]::backdrop {
   -webkit-backdrop-filter: blur(4px);
 }
 
+/* Forms inside modals: fields rise in one after another; submit buttons press in */
+@keyframes field-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+dialog[open] form > * { animation: field-in 380ms var(--ease-out) both; }
+dialog[open] form > *:nth-child(2) { animation-delay: 40ms; }
+dialog[open] form > *:nth-child(3) { animation-delay: 80ms; }
+dialog[open] form > *:nth-child(4) { animation-delay: 120ms; }
+dialog[open] form > *:nth-child(5) { animation-delay: 160ms; }
+dialog[open] form > *:nth-child(6) { animation-delay: 200ms; }
+dialog[open] form > *:nth-child(7) { animation-delay: 240ms; }
+dialog[open] form > *:nth-child(n + 8) { animation-delay: 280ms; }
+button[type="submit"] { transition: transform 120ms ease-out, opacity 150ms, box-shadow 200ms; }
+button[type="submit"]:active:not(:disabled) { transform: scale(0.97); }
+/* Labels light up while their field is focused */
+form div:has(> label):has(input:focus, select:focus, textarea:focus) > label { color: #007aff; transition: color 200ms; }
+
+/* Login brand panel: the light blobs drift slowly */
+@keyframes auth-glow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-30px, 24px) scale(1.08); }
+}
+.auth-glow { animation: auth-glow 12s ease-in-out infinite; }
+
+/* "Check your email": the envelope drops in and wiggles */
+@keyframes mail-in {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.6); }
+  55% { opacity: 1; transform: translateY(2px) scale(1.08); }
+  75% { transform: rotate(-8deg); }
+  90% { transform: rotate(5deg); }
+  100% { transform: none; }
+}
+.anim-mail-in { animation: mail-in 700ms var(--ease-out) both; }
+
 /* Brand loader: the "C" fills with water and drains, waves roll sideways */
 @keyframes brand-level {
   0% { transform: translateY(23px); }

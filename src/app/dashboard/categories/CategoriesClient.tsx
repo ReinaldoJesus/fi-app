@@ -10,7 +10,7 @@ type Cat = { id: string; name: string; type: string; icon: string | null; color:
 const COLORS = ["#ef4444","#f97316","#eab308","#22c55e","#10b981","#14b8a6","#06b6d4","#3b82f6","#6366f1","#8b5cf6","#a855f7","#ec4899","#f43f5e","#6b7280"]
 const QUICK_ICONS = ["🍔","🚗","🏠","💊","🎮","👕","📚","✈️","☕","🍕","💪","🎵","🛒","💡","📱","🏥","🎬","🐾","🍷","💅","🎁","🔧","💼","📈","💰","💻"]
 
-const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px]"
+const inputCls = "w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white placeholder-[#c7c7cc] dark:placeholder-[#636366] focus:outline-none focus:bg-white dark:focus:bg-[#1c1c1e] focus:border-[#007aff]/40 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.12)] transition-all duration-200 text-[14px]"
 const labelCls = "block text-[11px] font-semibold text-[#86868b] uppercase tracking-wide mb-1.5"
 const cardCls = "bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.09] dark:border-white/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-none"
 

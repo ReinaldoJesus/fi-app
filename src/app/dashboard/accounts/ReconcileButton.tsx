@@ -70,7 +70,7 @@ export default function ReconcileButton({ accountId, currentBalance }: {
                     value={realBalance}
                     onChange={e => setRealBalance(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") close() }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 text-[14px]"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#2c2c2e] border border-transparent text-[#1d1d1f] dark:text-white focus:outline-none focus:bg-white dark:focus:bg-[#1c1c1e] focus:border-[#007aff]/40 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.12)] transition-all duration-200 text-[14px]"
                   />
                 </div>
 

@@ -173,7 +173,7 @@ export default function BudgetsClient({ categories, spent, budgetMap, suggested,
                   <div className="flex items-center gap-2">
                     <input type="number" value={inputVal} onChange={e => setInputVal(e.target.value)}
                       placeholder="0" autoFocus
-                      className="w-28 px-2.5 py-1.5 rounded-lg bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-white text-[13px] focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10"
+                      className="w-28 px-2.5 py-1.5 rounded-lg bg-[#f5f5f7] dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-white text-[13px] focus:outline-none focus:bg-white dark:focus:bg-[#1c1c1e] focus:border-[#007aff]/40 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.12)] transition-all duration-200"
                       onKeyDown={e => { if (e.key === "Enter") save(cat.id); if (e.key === "Escape") setEditing(null) }} />
                     <button onClick={() => save(cat.id)} className="text-[#007aff] text-[13px] font-semibold">OK</button>
                     <button onClick={() => setEditing(null)} className="text-[#86868b] text-[13px]">✕</button>
